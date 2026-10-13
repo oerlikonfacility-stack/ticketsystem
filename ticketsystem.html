@@ -41,8 +41,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#plan{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#plan .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#plan,#syncs{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#plan .in,#syncs .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -83,6 +83,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <details class="card" id="eval"><summary>📊 Auswertung nach Werk</summary><div id="evalBody"></div></details>
   <button class="sec" onclick="openPlan()" style="width:100%;margin:0">🔁 Wartungsplan (wiederkehrende Aufgaben)</button>
+  <button class="sec" id="syncBtn" onclick="openSync()" style="width:100%;margin:6px 0 0">☁️ Sync: aus</button>
   <div id="list"></div>
 
   <div class="foot">
@@ -91,7 +92,7 @@ label{font-weight:600;font-size:14px}
     <button class="sec" onclick="$('file').click()">Importieren</button>
     <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
   </div>
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-13e</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-13f (Sync)</small></p>
 </main>
 
 <button class="fab" onclick="openSheet('')" aria-label="Neues Ticket">+</button>
@@ -146,6 +147,20 @@ label{font-weight:600;font-size:14px}
 </div></div>
 <div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
 
+<div id="syncs"><div class="in">
+  <h2>☁️ Synchronisierung</h2>
+  <p class="meta" id="syncInfo"></p>
+  <label for="s_cfg">Firebase-Konfiguration (den Block „firebaseConfig“ einfügen)</label>
+  <textarea id="s_cfg" rows="7" placeholder='const firebaseConfig = { apiKey: "…", authDomain: "…", projectId: "…", appId: "…" };'></textarea>
+  <label for="s_mail">E-Mail</label>
+  <input id="s_mail" type="email" autocomplete="username">
+  <label for="s_pw">Passwort</label>
+  <input id="s_pw" type="password" autocomplete="current-password">
+  <button onclick="connectSync()">Verbinden</button>
+  <button class="sec" onclick="disconnectSync()">Abmelden / Sync aus</button>
+  <button class="sec" onclick="$('syncs').style.display='none'">Schließen</button>
+</div></div>
+
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -168,7 +183,7 @@ db.tickets.forEach(t => {
 });
 
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); setTimeout(syncLocal, 0); return true; }
   catch (e) { alert("Speichern nicht möglich: Speicher voll. Bitte Backup erstellen und alte erledigte Tickets löschen."); return false; }
 }
 const esc = v => String(v || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -502,9 +517,157 @@ async function importFile(e) {
   }
 }
 
+/* ---------- Sync (Firebase, Änderungen werden pro Ticket abgeglichen) ---------- */
+
+const SC = "petersSyncCfg", SM = "petersSyncMeta", SMAIL = "petersSyncMail";
+let cfg = null, meta = {}, fdb = null, col = null, unsub = null;
+try { cfg = JSON.parse(localStorage.getItem(SC) || "null"); } catch (e) {}
+try { meta = JSON.parse(localStorage.getItem(SM) || "{}"); } catch (e) {}
+const saveMeta = () => { try { localStorage.setItem(SM, JSON.stringify(meta)); } catch (e) {} };
+const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h; };
+const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]));
+
+function setState(txt) {
+  $("syncBtn").textContent = "☁️ Sync: " + txt;
+  $("syncInfo").textContent = cfg ? "Status: " + txt : "Noch nicht eingerichtet. Siehe Anleitung.";
+}
+
+// Lokale Änderungen erkennen (neu, geändert, gelöscht) und zum Senden markieren
+function syncLocal() {
+  const seen = new Set();
+  syncItems().forEach(([k, x]) => {
+    seen.add(x.id);
+    const h = hs(JSON.stringify(x)), m = meta[x.id];
+    if (!m || m.h !== h || m.del) meta[x.id] = {h: h, u: Date.now(), p: 1, k: k};
+  });
+  Object.keys(meta).forEach(id => {
+    if (!seen.has(id) && !meta[id].del) meta[id] = {h: 0, u: Date.now(), p: 1, k: meta[id].k, del: true};
+  });
+  saveMeta();
+  pushPending();
+}
+
+function pushPending() {
+  if (!col) return;
+  Object.keys(meta).forEach(id => {
+    const m = meta[id];
+    if (!m.p) return;
+    let d = "";
+    if (!m.del) {
+      const f = syncItems().find(([k, x]) => x.id === id);
+      if (!f) return;
+      d = JSON.stringify(f[1]);
+    }
+    col.doc(id).set({k: m.k, d: d, upd: m.u, del: !!m.del})
+      .then(() => { if (meta[id] && meta[id].u === m.u) { meta[id].p = 0; saveMeta(); } setState("synchronisiert"); })
+      .catch(e => setState("Fehler: " + (e.code || e.message)));
+  });
+}
+
+function applyRemote(id, r) {
+  const m = meta[id];
+  if (m && m.u >= r.upd) return false;
+  if (r.del) {
+    db.tickets = db.tickets.filter(x => x.id !== id);
+    db.plans = db.plans.filter(x => x.id !== id);
+    meta[id] = {h: 0, u: r.upd, p: 0, k: r.k, del: true};
+    return true;
+  }
+  let x;
+  try { x = JSON.parse(r.d); } catch (e) { return false; }
+  const list = r.k === "p" ? db.plans : db.tickets, i = list.findIndex(y => y.id === id);
+  if (r.k !== "p") {
+    if (!Array.isArray(x.pl)) x.pl = [];
+    if (!Array.isArray(x.photos)) x.photos = [];
+    db.next = Math.max(db.next, (x.no || 0) + 1);
+  }
+  if (i >= 0) list[i] = x; else list.push(x);
+  meta[id] = {h: hs(JSON.stringify(x)), u: r.upd, p: 0, k: r.k};
+  return true;
+}
+
+function startListen(user) {
+  col = fdb.collection("users").doc(user.uid).collection("items");
+  syncLocal();
+  unsub = col.onSnapshot(snap => {
+    let changed = false;
+    snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
+    if (changed) {
+      saveMeta();
+      try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
+      render();
+      if ($("plan").style.display === "block") renderPlan();
+    }
+    setState(snap.metadata.fromCache ? "offline (lokal)" : "synchronisiert");
+  }, e => setState("Fehler: " + (e.code || e.message)));
+}
+
+const loadScript = src => new Promise((ok, no) => {
+  const el = document.createElement("script");
+  el.src = src; el.onload = ok;
+  el.onerror = () => no(new Error("Firebase konnte nicht geladen werden (kein Internet?)"));
+  document.head.appendChild(el);
+});
+
+async function initSync() {
+  if (!cfg || !cfg.apiKey || fdb) { setState(cfg ? "…" : "aus"); return; }
+  try {
+    const B = "https://www.gstatic.com/firebasejs/10.12.2/";
+    await loadScript(B + "firebase-app-compat.js");
+    await Promise.all([loadScript(B + "firebase-auth-compat.js"), loadScript(B + "firebase-firestore-compat.js")]);
+    firebase.initializeApp(cfg);
+    fdb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(u => {
+      if (unsub) { unsub(); unsub = null; }
+      if (u) startListen(u); else { col = null; setState("nicht angemeldet"); }
+    });
+  } catch (e) { setState("offline (lokal)"); }
+}
+
+function openSync() {
+  $("s_mail").value = localStorage.getItem(SMAIL) || "";
+  $("syncInfo").textContent = cfg ? $("syncBtn").textContent.replace("☁️ Sync: ", "Status: ") : "Noch nicht eingerichtet. Siehe Anleitung.";
+  $("syncs").style.display = "block";
+  $("syncs").scrollTop = 0;
+}
+
+async function connectSync() {
+  const c = {};
+  $("s_cfg").value.replace(/(\w+)\s*:\s*["']([^"']*)["']/g, (m, k, v) => { c[k] = v; return m; });
+  if (c.apiKey && c.projectId && (!cfg || cfg.apiKey !== c.apiKey)) {
+    cfg = c;
+    localStorage.setItem(SC, JSON.stringify(c));
+  }
+  if (!cfg || !cfg.apiKey) { alert("Bitte den Block firebaseConfig einfügen."); return; }
+  const mail = $("s_mail").value.trim(), pw = $("s_pw").value;
+  if (!mail || !pw) { alert("Bitte E-Mail und Passwort eingeben."); return; }
+  setState("verbinde …");
+  try {
+    await initSync();
+    if (!fdb) throw new Error("Firebase nicht erreichbar");
+    await firebase.auth().signInWithEmailAndPassword(mail, pw);
+    localStorage.setItem(SMAIL, mail);
+    $("s_pw").value = ""; $("s_cfg").value = "";
+    $("syncs").style.display = "none";
+  } catch (e) {
+    alert("Anmeldung fehlgeschlagen: " + (e.code || e.message));
+    setState("nicht angemeldet");
+  }
+}
+
+function disconnectSync() {
+  if (!confirm("Synchronisierung ausschalten? Die Tickets auf diesem Gerät bleiben erhalten.")) return;
+  try { if (unsub) unsub(); if (window.firebase && firebase.apps.length) firebase.auth().signOut(); } catch (e) {}
+  localStorage.removeItem(SC); localStorage.removeItem(SM);
+  cfg = null; meta = {}; col = null; unsub = null;
+  setState("aus");
+  location.reload();
+}
+
 ["q","fStatus","fWerk","fPrio"].forEach(id => $(id).addEventListener("input", render));
 runPlans();
 render();
+initSync();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw-tickets.js").catch(() => {});
 </script>
 </body>
