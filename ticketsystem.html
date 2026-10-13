@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17324d">
+<link rel="manifest" href="ticket-manifest.webmanifest">
+<title>Peters Ticketsystem</title>
+<style>
+:root{--bg:#f1f4f7;--card:#fff;--tx:#182431;--mu:#667581;--bd:#dce3e9;--pr:#245d86;--hd:#17324d;--sec:#e0e8ef}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1720;--card:#18232f;--tx:#e8eef4;--mu:#93a4b3;--bd:#27384a;--pr:#3b8bc4;--hd:#0b2236;--sec:#223446}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding-bottom:90px}
+header{background:var(--hd);color:#fff;padding:18px 16px 14px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+h1{margin:0;font-size:24px}
+header small{color:#c5d6e4}
+.stats{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.stat{background:rgba(255,255,255,.14);border-radius:10px;padding:6px 12px;font-size:14px}
+.stat b{font-size:18px;margin-right:4px}
+main{max-width:760px;margin:auto;padding:12px}
+input,select,textarea,button{font:inherit;padding:12px;border-radius:10px;color:var(--tx)}
+input,select,textarea{width:100%;border:1px solid var(--bd);background:var(--card);margin:4px 0 10px}
+button{border:0;background:var(--pr);color:#fff;font-weight:600;cursor:pointer;margin:3px}
+button.sec{background:var(--sec);color:var(--tx)}
+button.del{background:#c0392b}
+.filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.filters select{margin:0;padding:10px 6px;font-size:14px}
+#q{margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--bd);border-left:7px solid var(--bd);border-radius:13px;padding:12px 14px;margin:10px 0}
+.p-dringend{border-left-color:#d64545}.p-hoch{border-left-color:#e8892b}.p-normal{border-left-color:#3b8bc4}.p-niedrig{border-left-color:#8a9aa8}
+.card.done{opacity:.6}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.title{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pr-dringend{background:#d64545;color:#fff}.pr-hoch{background:#e8892b;color:#fff}.pr-normal{background:rgba(59,139,196,.2);color:var(--pr)}.pr-niedrig{background:var(--sec);color:var(--mu)}
+.s-offen{background:rgba(214,69,69,.15);color:#d64545}.s-bearbeitung{background:rgba(59,139,196,.2);color:#2f7fb8}.s-teil{background:rgba(232,137,43,.2);color:#c46d12}.s-angebot{background:rgba(142,84,196,.2);color:#9b59d0}.s-pr{background:rgba(0,150,160,.2);color:#0a9aa5}.s-dienstleister{background:rgba(220,170,20,.22);color:#b8860b}.s-warten{background:rgba(138,154,168,.25);color:var(--mu)}.s-erledigt{background:rgba(46,160,90,.2);color:#2a9a57}
+.meta{color:var(--mu);font-size:14px;margin:6px 0;overflow-wrap:anywhere}
+.late{color:#d64545;font-weight:700}
+.txt{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.act{display:flex;gap:6px;margin-top:8px}
+.act select{margin:0;flex:2;padding:10px}
+.act button{flex:1;margin:0}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:32px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+#sheet,#plan{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#plan .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+.pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
+.pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
+.th{position:relative}.th img{width:84px;height:84px;object-fit:cover;border-radius:10px;display:block}
+.th b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px}
+img.mini{width:56px;height:56px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;cursor:pointer}
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:30;align-items:center;justify-content:center}
+#lb img{max-width:100%;max-height:100%}
+table.ev{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+table.ev td,table.ev th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:center}
+table.ev td:first-child,table.ev th:first-child{text-align:left}
+summary{cursor:pointer;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
+label{font-weight:600;font-size:14px}
+.foot{display:flex;flex-wrap:wrap;margin-top:18px}
+.foot button{flex:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛠️ Peters Ticketsystem</h1>
+  <small>Haustechnik · Werk 1–5</small>
+  <div class="stats" id="stats"></div>
+</header>
+
+<main>
+  <input id="q" type="search" placeholder="🔎 Tickets suchen …" aria-label="Suchen">
+  <div class="filters">
+    <select id="fStatus" aria-label="Status"></select>
+    <select id="fWerk" aria-label="Werk"></select>
+    <select id="fPrio" aria-label="Priorität"></select>
+  </div>
+  <details class="card" id="eval"><summary>📊 Auswertung nach Werk</summary><div id="evalBody"></div></details>
+  <button class="sec" onclick="openPlan()" style="width:100%;margin:0">🔁 Wartungsplan (wiederkehrende Aufgaben)</button>
+  <div id="list"></div>
+
+  <div class="foot">
+    <button class="sec" onclick="backupCSV()">Backup (CSV)</button>
+    <button class="sec" onclick="backupJSON()">Backup (JSON)</button>
+    <button class="sec" onclick="$('file').click()">Importieren</button>
+    <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
+  </div>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-13c</small></p>
+</main>
+
+<button class="fab" onclick="openSheet('')" aria-label="Neues Ticket">＋</button>
+
+<div id="sheet"><div class="in">
+  <h2 id="sTitle">Neues Ticket</h2>
+  <input id="f_id" type="hidden">
+  <label for="f_title">Titel *</label>
+  <input id="f_title" placeholder="z. B. Heizung Halle 3 fällt aus">
+  <div class="two">
+    <div><label for="f_werk">Werk</label><select id="f_werk"></select></div>
+    <div><label for="f_prio">Priorität</label><select id="f_prio"></select></div>
+  </div>
+  <label for="f_status">Status</label>
+  <select id="f_status"></select>
+  <label for="f_from">Von (E-Mail-Absender)</label>
+  <input id="f_from" list="senders" placeholder="Name des Absenders">
+  <datalist id="senders"></datalist>
+  <div class="two">
+    <div><label for="f_mail">Mail vom</label><input id="f_mail" type="date"></div>
+    <div><label for="f_due">Fällig bis</label><input id="f_due" type="date"></div>
+  </div>
+  <label for="f_desc">Beschreibung</label>
+  <textarea id="f_desc" rows="4" placeholder="Was ist zu tun?"></textarea>
+  <label>Benötigte Teile <small class="meta">(Tippen wechselt: ⬜ offen → 📦 bestellt → ✅ da)</small></label>
+  <div id="plist"></div>
+  <div class="two"><input id="pnew" placeholder="Teil eintragen" onkeydown="if(event.key==='Enter'){addPart();event.preventDefault()}"><button class="sec" onclick="addPart()" style="margin:4px 0 10px">＋ Teil</button></div>
+  <label>Fotos (max. 4)</label>
+  <div id="phlist" class="thumbs"></div>
+  <input id="phfile" type="file" accept="image/*" multiple hidden onchange="addPhotos(event)">
+  <button class="sec" onclick="$('phfile').click()" style="margin:4px 0 12px">📷 Foto hinzufügen</button><br>
+  <label for="f_notes">Notizen</label>
+  <textarea id="f_notes" rows="3"></textarea>
+  <div id="histBox" hidden><label>Verlauf</label><ul class="hist" id="hist"></ul></div>
+  <button onclick="saveTicket()">Speichern</button>
+  <button class="sec" onclick="closeSheet()">Abbrechen</button>
+  <button class="del" id="delBtn" onclick="delTicket()">Löschen</button>
+</div></div>
+
+<div id="plan"><div class="in">
+  <h2>🔁 Wartungsplan</h2>
+  <small class="meta">Ist eine Wartung fällig, legt die App beim Öffnen automatisch ein Ticket an.</small>
+  <div id="planList"></div>
+  <h3>Neue wiederkehrende Aufgabe</h3>
+  <input id="p_title" placeholder="z. B. Legionellenprobe">
+  <div class="two"><select id="p_werk"></select><select id="p_prio"></select></div>
+  <select id="p_int"></select>
+  <label for="p_next">Erste Fälligkeit</label>
+  <input id="p_next" type="date">
+  <button onclick="addPlan()">Hinzufügen</button>
+  <button class="sec" onclick="$('plan').style.display='none'">Schließen</button>
+</div></div>
+<div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const KEY = "petersTickets";
+const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil muss bestellt werden", angebot:"Angebot angefordert", pr:"PR erstellt", dienstleister:"Dienstleister beauftragt", warten:"Wartet auf Rückmeldung", erledigt:"Erledigt"};
+const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
+const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
+const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
+let db = {next: 1, tickets: [], plans: []};
+let editPl = [], editPh = [];
+
+try {
+  const s = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (s && Array.isArray(s.tickets)) db = s;
+} catch (e) {}
+if (!Array.isArray(db.plans)) db.plans = [];
+db.tickets.forEach(t => {
+  if (!Array.isArray(t.pl)) t.pl = parseParts(t.parts);
+  if (!Array.isArray(t.photos)) t.photos = [];
+});
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
+  catch (e) { alert("Speichern nicht möglich: Speicher voll. Bitte Backup erstellen und alte erledigte Tickets löschen."); return false; }
+}
+const esc = v => String(v || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fd = s => s ? s.split("-").reverse().join(".") : "";
+const now = () => new Date().toISOString();
+const ft = t => new Date(t).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+const today = () => new Date().toLocaleDateString("sv-SE");
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const opts = (o, first) => (first ? `<option value="">${first}</option>` : "") + Object.keys(o).map(k => `<option value="${k}">${o[k]}</option>`).join("");
+
+$("fStatus").innerHTML = `<option value="aktiv">Aktive</option><option value="alle">Alle</option>` + opts(ST);
+$("fWerk").innerHTML = opts({1:"Werk 1",2:"Werk 2",3:"Werk 3",4:"Werk 4",5:"Werk 5"}, "Alle Werke");
+$("fPrio").innerHTML = opts(PR, "Alle Prios");
+$("f_werk").innerHTML = opts({1:"Werk 1",2:"Werk 2",3:"Werk 3",4:"Werk 4",5:"Werk 5"});
+$("f_prio").innerHTML = opts(PR);
+$("f_status").innerHTML = opts(ST);
+
+function render() {
+  const q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fw = $("fWerk").value, fp = $("fPrio").value;
+  const list = db.tickets.filter(t =>
+    (fs === "alle" || (fs === "aktiv" ? t.status !== "erledigt" : t.status === fs)) &&
+    (!fw || t.werk === fw) && (!fp || t.prio === fp) &&
+    (!q || [t.title, t.desc, t.from, partsText(t), t.notes, "werk " + t.werk, "#" + t.no].join(" ").toLowerCase().includes(q))
+  ).sort((a, b) =>
+    ((a.status === "erledigt") - (b.status === "erledigt")) || (PO[a.prio] - PO[b.prio]) ||
+    String(a.due || "9").localeCompare(String(b.due || "9")) || b.created.localeCompare(a.created));
+
+  const act = db.tickets.filter(t => t.status !== "erledigt");
+  const late = act.filter(t => t.due && t.due < today()).length;
+  $("stats").innerHTML =
+    `<span class="stat"><b>${act.length}</b>aktiv</span>` +
+    `<span class="stat"><b>${act.filter(t => t.prio === "dringend").length}</b>dringend</span>` +
+    `<span class="stat"><b>${act.filter(t => t.status === "teil").length}</b>Teil bestellen</span>` +
+    (late ? `<span class="stat"><b>${late}</b>überfällig</span>` : "");
+
+  const senders = [...new Set(db.tickets.map(t => t.from).filter(Boolean))].sort();
+  $("senders").innerHTML = senders.map(s => `<option value="${esc(s)}">`).join("");
+
+  renderEval();
+  $("list").innerHTML = list.map(t => {
+    const isLate = t.due && t.due < today() && t.status !== "erledigt";
+    const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
+      t.due ? (isLate ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""]
+      .filter(Boolean).map((x, i) => i === 0 || x.startsWith("<") ? x : esc(x)).join(" · ");
+    return `<article class="card p-${t.prio}${t.status === "erledigt" ? " done" : ""}">
+      <div class="top"><div class="title">#${t.no} ${esc(t.title)}</div><span class="badge pr-${t.prio}">${PR[t.prio]}</span></div>
+      <div class="meta">${meta}</div>
+      <div><span class="badge s-${t.status}">${ST[t.status]}</span></div>
+      ${t.desc ? `<div class="txt">${esc(t.desc)}</div>` : ""}
+      ${t.pl && t.pl.length ? `<div class="meta">🔧 ${t.pl.map(p => ["⬜","📦","✅"][p.s] + " " + esc(p.n)).join(" · ")}</div>` : ""}
+      ${(t.photos || []).map(p => `<img class="mini" src="${p}" onclick="showImg(this.src)" alt="Foto">`).join("")}
+      <div class="act">
+        <select onchange="setStatus('${t.id}', this.value)" aria-label="Status ändern">${opts(ST).replace(`value="${t.status}"`, `value="${t.status}" selected`)}</select>
+        <button class="sec" onclick="openSheet('${t.id}')">Öffnen</button>
+      </div>
+    </article>`;
+  }).join("") || `<div class="card">Keine Tickets gefunden. Mit ＋ legst du ein neues an.</div>`;
+}
+
+function openSheet(id) {
+  const t = db.tickets.find(x => x.id === id);
+  $("sTitle").textContent = t ? "Ticket #" + t.no : "Neues Ticket";
+  $("f_id").value = t ? t.id : "";
+  K.forEach(k => $("f_" + k).value = t ? (t[k] || "") : "");
+  if (!t) { $("f_werk").value = "1"; $("f_prio").value = "normal"; $("f_status").value = "offen"; $("f_mail").value = today(); }
+  editPl = t ? t.pl.map(p => ({n: p.n, s: p.s})) : [];
+  editPh = t ? t.photos.slice() : [];
+  renderParts(); renderPhotos();
+  $("histBox").hidden = !t;
+  $("hist").innerHTML = t ? t.history.slice().reverse().map(h => `<li>${ft(h.t)} – ${ST[h.s] || esc(h.s)}</li>`).join("") : "";
+  $("delBtn").style.display = t ? "" : "none";
+  $("sheet").style.display = "block";
+  $("sheet").scrollTop = 0;
+  if (!t) $("f_title").focus();
+}
+function closeSheet() { $("sheet").style.display = "none"; }
+
+function saveTicket() {
+  const v = {};
+  K.forEach(k => v[k] = $("f_" + k).value.trim());
+  v.pl = editPl; v.photos = editPh;
+  if (!v.title) { alert("Bitte einen Titel eingeben."); $("f_title").focus(); return; }
+  const snapshot = JSON.stringify(db), id = $("f_id").value;
+  const t = db.tickets.find(x => x.id === id);
+  if (t) {
+    if (t.status !== v.status) t.history.push({t: now(), s: v.status});
+    Object.assign(t, v);
+  } else {
+    db.tickets.push(Object.assign({id: uid(), no: db.next++, created: now(), history: [{t: now(), s: v.status}]}, v));
+  }
+  if (!save()) { db = JSON.parse(snapshot); return; }
+  closeSheet();
+  render();
+}
+
+function setStatus(id, s) {
+  const t = db.tickets.find(x => x.id === id);
+  if (!t || t.status === s) return;
+  const snapshot = JSON.stringify(db);
+  t.status = s;
+  t.history.push({t: now(), s: s});
+  if (!save()) db = JSON.parse(snapshot);
+  render();
+}
+
+function delTicket() {
+  const t = db.tickets.find(x => x.id === $("f_id").value);
+  if (!t || !confirm("Ticket #" + t.no + " wirklich löschen?")) return;
+  db.tickets = db.tickets.filter(x => x.id !== t.id);
+  save();
+  closeSheet();
+  render();
+}
+
+/* ---------- Teile, Fotos ---------- */
+
+const PE = ["⬜", "📦", "✅"], PN = ["", "bestellt", "da"];
+function parseParts(text) {
+  return String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const m = l.match(/^(.*?)\s*\((bestellt|da)\)$/i);
+    return m ? {n: m[1], s: m[2].toLowerCase() === "da" ? 2 : 1} : {n: l, s: 0};
+  });
+}
+const partsText = t => (t.pl || []).map(p => p.n + (p.s ? " (" + PN[p.s] + ")" : "")).join("\n");
+function renderParts() {
+  $("plist").innerHTML = editPl.map((p, i) =>
+    `<div class="pi" onclick="cycPart(${i})"><span>${PE[p.s]} ${esc(p.n)}</span><b onclick="event.stopPropagation();delPart(${i})">✕</b></div>`).join("");
+}
+function addPart() {
+  const v = $("pnew").value.trim();
+  if (!v) return;
+  editPl.push({n: v, s: 0});
+  $("pnew").value = "";
+  renderParts();
+}
+function cycPart(i) { editPl[i].s = (editPl[i].s + 1) % 3; renderParts(); }
+function delPart(i) { editPl.splice(i, 1); renderParts(); }
+
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const i = new Image();
+      i.onload = () => {
+        const s = Math.min(1, 640 / Math.max(i.width, i.height)), c = document.createElement("canvas");
+        c.width = Math.round(i.width * s); c.height = Math.round(i.height * s);
+        c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", 0.7));
+      };
+      i.onerror = rej; i.src = r.result;
+    };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+}
+async function addPhotos(e) {
+  for (const f of e.target.files) {
+    if (editPh.length >= 4) { alert("Maximal 4 Fotos pro Ticket."); break; }
+    try { editPh.push(await shrink(f)); } catch (x) { alert("Ein Foto konnte nicht verarbeitet werden."); }
+  }
+  e.target.value = "";
+  renderPhotos();
+}
+function renderPhotos() {
+  $("phlist").innerHTML = editPh.map((p, i) =>
+    `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt="Foto"><b onclick="delPh(${i})">✕</b></span>`).join("");
+}
+function delPh(i) { if (confirm("Foto entfernen?")) { editPh.splice(i, 1); renderPhotos(); } }
+function showImg(src) { $("lbi").src = src; $("lb").style.display = "flex"; }
+
+/* ---------- Auswertung, Wartungsplan ---------- */
+
+function renderEval() {
+  let h = `<table class="ev"><tr><th>Werk</th><th>Aktiv</th><th>Dringend</th><th>Teil</th><th>Erledigt</th></tr>`;
+  for (let w = 1; w <= 5; w++) {
+    const a = db.tickets.filter(t => t.werk === String(w));
+    const act = a.filter(t => t.status !== "erledigt");
+    h += `<tr><td>Werk ${w}</td><td>${act.length}</td><td>${act.filter(t => t.prio === "dringend").length}</td><td>${act.filter(t => t.status === "teil").length}</td><td>${a.length - act.length}</td></tr>`;
+  }
+  $("evalBody").innerHTML = h + "</table>";
+}
+
+const INT = {d7: "Wöchentlich", d14: "Alle 2 Wochen", m1: "Monatlich", m3: "Vierteljährlich", m6: "Halbjährlich", m12: "Jährlich"};
+$("p_int").innerHTML = opts(INT);
+$("p_int").value = "m1";
+$("p_werk").innerHTML = opts({1:"Werk 1",2:"Werk 2",3:"Werk 3",4:"Werk 4",5:"Werk 5"});
+$("p_prio").innerHTML = opts(PR);
+$("p_prio").value = "normal";
+
+function addInt(date, code) {
+  const d = new Date(date + "T12:00:00"), n = +code.slice(1);
+  if (code[0] === "d") d.setDate(d.getDate() + n); else d.setMonth(d.getMonth() + n);
+  return d.toLocaleDateString("sv-SE");
+}
+function newTicket(o) {
+  const t = Object.assign(clean({}), o);
+  t.no = db.next++;
+  t.history = [{t: now(), s: "offen"}];
+  return t;
+}
+function runPlans() {
+  let made = 0;
+  db.plans.forEach(p => {
+    if (p.next > today()) return;
+    db.tickets.push(newTicket({title: p.title, werk: p.werk, prio: p.prio, status: "offen", from: "Wartungsplan", due: p.next, desc: "Wiederkehrende Wartung (" + INT[p.int] + ")"}));
+    made++;
+    for (let g = 0; p.next <= today() && g < 400; g++) p.next = addInt(p.next, p.int);
+  });
+  if (made) save();
+  return made;
+}
+function renderPlan() {
+  $("planList").innerHTML = db.plans.map((p, i) =>
+    `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(p.title)}</b><br><small class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</small></span><b onclick="delPlan(${i})">✕</b></div>`).join("")
+    || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`;
+}
+function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
+function addPlan() {
+  const title = $("p_title").value.trim();
+  if (!title) { alert("Bitte einen Titel eingeben."); return; }
+  const snapshot = JSON.stringify(db);
+  db.plans.push({id: uid(), title: title, werk: $("p_werk").value, prio: $("p_prio").value, int: $("p_int").value, next: $("p_next").value || today()});
+  runPlans();
+  if (!save()) { db = JSON.parse(snapshot); return; }
+  $("p_title").value = ""; $("p_next").value = "";
+  renderPlan(); render();
+}
+function delPlan(i) {
+  if (!confirm("Wiederkehrende Aufgabe löschen? Bereits erzeugte Tickets bleiben erhalten.")) return;
+  db.plans.splice(i, 1); save(); renderPlan();
+}
+
+/* ---------- Backup / Import ---------- */
+
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; a.style.display = "none";
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 10000);
+}
+function backupJSON() {
+  saveBlob(new Blob([JSON.stringify({format: "PetersTicketsystem", ...db}, null, 2)], {type: "application/json"}), "peters-tickets-backup-" + today() + ".json");
+}
+const CSVH = ["Nr","Titel","Werk","Von","Mail vom","Priorität","Status","Fällig bis","Beschreibung","Teile","Notizen","Erstellt"];
+function backupCSV() {
+  if (!db.tickets.length) { alert("Es gibt noch keine Tickets zum Sichern."); return; }
+  const c = v => { const s = String(v || ""); return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const rows = db.tickets.map(t => [t.no, t.title, t.werk, t.from, t.mail, PR[t.prio], ST[t.status], t.due, t.desc, partsText(t), t.notes, t.created].map(c).join(";"));
+  saveBlob(new Blob(["\uFEFF" + [CSVH.map(c).join(";")].concat(rows).join("\r\n")], {type: "text/csv;charset=utf-8"}), "peters-tickets-backup-" + today() + ".csv");
+}
+function parseCSV(t, d) {
+  const r = []; let row = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === d) { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; row.push(f); f = ""; r.push(row); row = []; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); r.push(row); }
+  return r.filter(x => x.some(c => c.trim()));
+}
+const rev = (o, label) => Object.keys(o).find(k => o[k].toLowerCase() === String(label || "").trim().toLowerCase() || k === String(label || "").trim().toLowerCase()) || "";
+
+function clean(r) {
+  const t = {id: r.id || uid(), no: Number(r.no) || 0, created: r.created || now(), history: Array.isArray(r.history) ? r.history : []};
+  K.forEach(k => t[k] = String(r[k] || "").trim());
+  t.pl = Array.isArray(r.pl) ? r.pl.map(p => ({n: String(p.n || ""), s: Math.min(2, +p.s || 0)})).filter(p => p.n) : parseParts(r.parts);
+  t.photos = Array.isArray(r.photos) ? r.photos.filter(p => /^data:image\/jpeg;base64,/.test(p)).slice(0, 4) : [];
+  t.werk = ["1","2","3","4","5"].includes(t.werk) ? t.werk : "1";
+  t.prio = PR[t.prio] ? t.prio : "normal";
+  t.status = ST[t.status] ? t.status : "offen";
+  if (!t.title) t.title = "Importiertes Ticket";
+  if (!t.history.length) t.history.push({t: t.created, s: t.status});
+  return t;
+}
+
+async function importFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const text = new TextDecoder("utf-8").decode(new Uint8Array(await file.arrayBuffer()));
+    let inc = [], pin = [];
+    if (/\.json$/i.test(file.name)) {
+      const d = JSON.parse(text);
+      inc = Array.isArray(d) ? d : d.tickets;
+      pin = Array.isArray(d.plans) ? d.plans : [];
+      if (!Array.isArray(inc)) throw new Error("Ungültige Backup-Datei");
+    } else {
+      const rows = parseCSV(text, (text.split(/\r?\n/)[0].match(/;/g) || []).length >= (text.split(/\r?\n/)[0].match(/,/g) || []).length ? ";" : ",");
+      if (rows.length < 2) throw new Error("Keine Tickets in der Datei.");
+      const h = rows[0].map(x => x.replace(/^\uFEFF/, "").trim().toLowerCase());
+      const col = (r, n) => { const i = h.indexOf(n); return i < 0 ? "" : r[i]; };
+      inc = rows.slice(1).map(r => ({
+        no: col(r, "nr"), title: col(r, "titel"), werk: col(r, "werk"), from: col(r, "von"), mail: col(r, "mail vom"),
+        prio: rev(PR, col(r, "priorität")), status: rev(ST, col(r, "status")), due: col(r, "fällig bis"),
+        desc: col(r, "beschreibung"), parts: col(r, "teile"), notes: col(r, "notizen"), created: col(r, "erstellt")
+      }));
+    }
+    if (!inc.length) throw new Error("Keine Tickets in der Datei gefunden.");
+    if (!confirm(inc.length + " Tickets gefunden. Importieren?")) return;
+
+    const snapshot = JSON.stringify(db), key = t => [t.title, t.from, t.mail, t.werk].join("|").toLowerCase();
+    const known = new Set(db.tickets.map(key));
+    const ids = new Set(db.tickets.map(t => t.id));
+    let added = 0;
+    inc.forEach(r => {
+      const t = clean(r);
+      if (known.has(key(t)) || ids.has(t.id)) return;
+      if (!t.no || db.tickets.some(x => x.no === t.no)) t.no = db.next;
+      db.next = Math.max(db.next, t.no + 1);
+      db.tickets.push(t); known.add(key(t)); ids.add(t.id); added++;
+    });
+    pin.forEach(p => { if (p && p.title && p.next && INT[p.int] && !db.plans.some(x => x.id === p.id)) db.plans.push(p); });
+    if (!save()) { db = JSON.parse(snapshot); return; }
+    render();
+    alert(added + " Tickets importiert" + (inc.length - added ? ", " + (inc.length - added) + " Duplikate übersprungen" : "") + ".");
+  } catch (err) {
+    alert("Import fehlgeschlagen: " + err.message);
+  } finally {
+    e.target.value = "";
+  }
+}
+
+["q","fStatus","fWerk","fPrio"].forEach(id => $(id).addEventListener("input", render));
+runPlans();
+render();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw-tickets.js").catch(() => {});
+</script>
+</body>
+</html>
