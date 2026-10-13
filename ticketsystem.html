@@ -40,7 +40,7 @@ button.del{background:#c0392b}
 .act{display:flex;gap:6px;margin-top:8px}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
-.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:32px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #sheet,#plan{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
 #sheet .in,#plan .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
@@ -55,6 +55,9 @@ table.ev{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
 table.ev td,table.ev th{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:center}
 table.ev td:first-child,table.ev th:first-child{text-align:left}
 summary{cursor:pointer;font-weight:600}
+.seg{display:flex;gap:6px;margin:0 0 10px}
+.seg button{flex:1;margin:0;background:var(--sec);color:var(--tx)}
+.seg button.on{background:var(--pr);color:#fff}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
 label{font-weight:600;font-size:14px}
@@ -70,6 +73,8 @@ label{font-weight:600;font-size:14px}
 </header>
 
 <main>
+  <button onclick="openSheet('')" style="width:100%;margin:0 0 10px;font-size:18px">+ Neues Ticket</button>
+  <div class="seg" id="seg"><button data-v="aktiv" onclick="setView('aktiv')">Aktiv</button><button data-v="erledigt" onclick="setView('erledigt')">✅ Erledigt-Archiv</button></div>
   <input id="q" type="search" placeholder="🔎 Tickets suchen …" aria-label="Suchen">
   <div class="filters">
     <select id="fStatus" aria-label="Status"></select>
@@ -86,10 +91,10 @@ label{font-weight:600;font-size:14px}
     <button class="sec" onclick="$('file').click()">Importieren</button>
     <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
   </div>
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-13c</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-13e</small></p>
 </main>
 
-<button class="fab" onclick="openSheet('')" aria-label="Neues Ticket">＋</button>
+<button class="fab" onclick="openSheet('')" aria-label="Neues Ticket">+</button>
 
 <div id="sheet"><div class="in">
   <h2 id="sTitle">Neues Ticket</h2>
@@ -171,6 +176,8 @@ const fd = s => s ? s.split("-").reverse().join(".") : "";
 const now = () => new Date().toISOString();
 const ft = t => new Date(t).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 const today = () => new Date().toLocaleDateString("sv-SE");
+const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
+function setView(v) { $("fStatus").value = v; render(); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const opts = (o, first) => (first ? `<option value="">${first}</option>` : "") + Object.keys(o).map(k => `<option value="${k}">${o[k]}</option>`).join("");
 
@@ -188,11 +195,17 @@ function render() {
     (!fw || t.werk === fw) && (!fp || t.prio === fp) &&
     (!q || [t.title, t.desc, t.from, partsText(t), t.notes, "werk " + t.werk, "#" + t.no].join(" ").toLowerCase().includes(q))
   ).sort((a, b) =>
+    (fs === "erledigt" ? doneAt(b).localeCompare(doneAt(a)) : 0) ||
     ((a.status === "erledigt") - (b.status === "erledigt")) || (PO[a.prio] - PO[b.prio]) ||
     String(a.due || "9").localeCompare(String(b.due || "9")) || b.created.localeCompare(a.created));
 
   const act = db.tickets.filter(t => t.status !== "erledigt");
   const late = act.filter(t => t.due && t.due < today()).length;
+  document.querySelectorAll("#seg button").forEach(b => {
+    const a = b.dataset.v === "aktiv";
+    b.textContent = (a ? "Aktiv (" + act.length : "✅ Erledigt-Archiv (" + (db.tickets.length - act.length)) + ")";
+    b.classList.toggle("on", $("fStatus").value === b.dataset.v);
+  });
   $("stats").innerHTML =
     `<span class="stat"><b>${act.length}</b>aktiv</span>` +
     `<span class="stat"><b>${act.filter(t => t.prio === "dringend").length}</b>dringend</span>` +
@@ -206,7 +219,8 @@ function render() {
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
     const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
-      t.due ? (isLate ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""]
+      t.due ? (isLate ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : "",
+      t.status === "erledigt" ? "erledigt am " + new Date(doneAt(t)).toLocaleDateString("de-DE") : ""]
       .filter(Boolean).map((x, i) => i === 0 || x.startsWith("<") ? x : esc(x)).join(" · ");
     return `<article class="card p-${t.prio}${t.status === "erledigt" ? " done" : ""}">
       <div class="top"><div class="title">#${t.no} ${esc(t.title)}</div><span class="badge pr-${t.prio}">${PR[t.prio]}</span></div>
@@ -220,7 +234,7 @@ function render() {
         <button class="sec" onclick="openSheet('${t.id}')">Öffnen</button>
       </div>
     </article>`;
-  }).join("") || `<div class="card">Keine Tickets gefunden. Mit ＋ legst du ein neues an.</div>`;
+  }).join("") || `<div class="card">Keine Tickets gefunden. Mit „+ Neues Ticket“ legst du ein neues an.</div>`;
 }
 
 function openSheet(id) {
