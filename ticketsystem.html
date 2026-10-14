@@ -10,8 +10,8 @@
 :root{--bg:#f1f4f7;--card:#fff;--tx:#182431;--mu:#667581;--bd:#dce3e9;--pr:#245d86;--hd:#17324d;--sec:#e0e8ef}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1720;--card:#18232f;--tx:#e8eef4;--mu:#93a4b3;--bd:#27384a;--pr:#3b8bc4;--hd:#0b2236;--sec:#223446}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding-bottom:30px}
-header{background:var(--hd);color:#fff;padding:18px 16px 14px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding-bottom:90px}
+header{position:sticky;top:0;z-index:6;box-shadow:0 2px 8px rgba(0,0,0,.25);background:var(--hd);color:#fff;padding:18px 16px 14px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
 h1{margin:0;font-size:24px}
 header small{color:#c5d6e4}
 .hrow{display:flex;align-items:center;gap:14px}
@@ -45,8 +45,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#plan,#syncs{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#plan .in,#syncs .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#plan,#syncs,#sys,#ev{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#plan .in,#syncs .in,#sys .in,#ev .in{max-width:760px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -92,22 +92,21 @@ label{font-weight:600;font-size:14px}
     <select id="fWerk" aria-label="Werk"></select>
     <select id="fPrio" aria-label="Priorität"></select>
   </div>
-  <details class="card" id="eval"><summary>📊 Auswertung nach Werk</summary><div id="evalBody"></div></details>
-  <div class="two" style="margin-bottom:10px">
+  <div class="two" style="margin-bottom:6px">
+    <button class="sec" onclick="openEval()" style="margin:0;padding:12px 6px;font-size:15px">📊 Auswertung nach Werk</button>
     <button class="sec" id="planBtn" onclick="openPlan()" style="margin:0;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
+  </div>
+  <div class="two" style="margin-bottom:10px">
     <button class="sec" id="syncBtn" onclick="openSync()" style="margin:0;padding:12px 6px;font-size:15px">☁️ Sync: aus</button>
+    <button class="sec" onclick="openSys()" style="margin:0;padding:12px 6px;font-size:15px">⚙️ System</button>
   </div>
   <div id="list"></div>
 
-  <div class="foot">
-    <button class="sec" onclick="backupCSV()">Backup (CSV)</button>
-    <button class="sec" onclick="backupJSON()">Backup (JSON)</button>
-    <button class="sec" onclick="$('file').click()">Importieren</button>
-    <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
-  </div>
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-14c (Sync)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-14g (Sync)</small></p>
 </main>
 
+
+<button class="fab" onclick="openSheet('')" aria-label="Neues Ticket">+</button>
 
 <div id="sheet"><div class="in">
   <h2 id="sTitle">Neues Ticket</h2>
@@ -171,6 +170,23 @@ label{font-weight:600;font-size:14px}
   <button onclick="connectSync()">Verbinden</button>
   <button class="sec" onclick="disconnectSync()">Abmelden / Sync aus</button>
   <button class="sec" onclick="$('syncs').style.display='none'">Schließen</button>
+</div></div>
+
+<div id="sys"><div class="in">
+  <h2>⚙️ System</h2>
+  <p class="meta">Sicherung und Wiederherstellung deiner Tickets. Das JSON-Backup enthält auch Fotos und Wartungspläne, das CSV-Backup nur die Ticketdaten.</p>
+  <button onclick="backupCSV()" style="width:100%;margin:4px 0">Backup speichern (CSV)</button>
+  <button onclick="backupJSON()" style="width:100%;margin:4px 0">Backup speichern (JSON, mit Fotos)</button>
+  <button class="sec" onclick="$('file').click()" style="width:100%;margin:4px 0">Backup importieren (CSV / JSON)</button>
+  <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
+  <button class="sec" onclick="$('sys').style.display='none'" style="width:100%;margin:14px 0 0">Schließen</button>
+</div></div>
+
+<div id="ev"><div class="in">
+  <h2>📊 Auswertung nach Werk</h2>
+  <p class="meta">Aktive Tickets pro Werk. „Teil“ = Status Teil bestellt.</p>
+  <div id="evalBody"></div>
+  <button class="sec" onclick="$('ev').style.display='none'" style="width:100%;margin:14px 0 0">Schließen</button>
 </div></div>
 
 <script>
@@ -436,6 +452,8 @@ function renderPlan() {
     `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(p.title)}</b><br><small class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</small></span><b onclick="delPlan(${i})">✕</b></div>`).join("")
     || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`) + hiddenHtml();
 }
+function openEval() { renderEval(); $("ev").style.display = "block"; $("ev").scrollTop = 0; }
+function openSys() { $("sys").style.display = "block"; $("sys").scrollTop = 0; }
 function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
 function addPlan() {
   const title = $("p_title").value.trim();
