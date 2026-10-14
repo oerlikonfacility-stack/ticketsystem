@@ -105,7 +105,7 @@ label{font-weight:600;font-size:14px}
     <button class="sec" onclick="$('file').click()">Importieren</button>
     <input id="file" type="file" accept=".json,.csv,text/csv" hidden onchange="importFile(event)">
   </div>
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-14b (Sync)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-14c (Sync)</small></p>
 </main>
 
 
@@ -203,6 +203,14 @@ const fd = s => s ? s.split("-").reverse().join(".") : "";
 const now = () => new Date().toISOString();
 const ft = t => new Date(t).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
 const today = () => new Date().toLocaleDateString("sv-SE");
+const PLAN_LEAD_DAYS = 7;   // Wartungs-Tickets erscheinen vorne erst so viele Tage vor dem Fälligkeitstermin
+const planTicket = t => t.from === "Wartungsplan" || !!t.plan;
+function hid(t) {
+  if (!planTicket(t) || t.status !== "offen" || !t.due) return false;
+  const lim = new Date();
+  lim.setDate(lim.getDate() + PLAN_LEAD_DAYS);
+  return t.due > lim.toLocaleDateString("sv-SE");
+}
 const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
 function setView(v) { $("fStatus").value = v; render(); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -218,6 +226,7 @@ $("f_status").innerHTML = opts(ST);
 function render() {
   const q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fw = $("fWerk").value, fp = $("fPrio").value;
   const list = db.tickets.filter(t =>
+    !hid(t) &&
     (fs === "alle" || (fs === "aktiv" ? t.status !== "erledigt" : t.status === fs)) &&
     (!fw || t.werk === fw) && (!fp || t.prio === fp) &&
     (!q || [t.title, t.desc, t.from, partsText(t), t.notes, "werk " + t.werk, "#" + t.no].join(" ").toLowerCase().includes(q))
@@ -226,11 +235,11 @@ function render() {
     ((a.status === "erledigt") - (b.status === "erledigt")) || (PO[a.prio] - PO[b.prio]) ||
     String(a.due || "9").localeCompare(String(b.due || "9")) || b.created.localeCompare(a.created));
 
-  const act = db.tickets.filter(t => t.status !== "erledigt");
+  const act = db.tickets.filter(t => t.status !== "erledigt" && !hid(t));
   const late = act.filter(t => t.due && t.due < today()).length;
   document.querySelectorAll("#seg button").forEach(b => {
     const a = b.dataset.v === "aktiv";
-    b.textContent = (a ? "Aktiv (" + act.length : "✅ Erledigt-Archiv (" + (db.tickets.length - act.length)) + ")";
+    b.textContent = (a ? "Aktiv (" + act.length : "✅ Erledigt-Archiv (" + db.tickets.filter(t => t.status === "erledigt").length) + ")";
     b.classList.toggle("on", $("fStatus").value === b.dataset.v);
   });
   $("stats").innerHTML =
@@ -381,8 +390,8 @@ function renderEval() {
   let h = `<table class="ev"><tr><th>Werk</th><th>Aktiv</th><th>Dringend</th><th>Teil</th><th>Erledigt</th></tr>`;
   for (let w = 1; w <= 5; w++) {
     const a = db.tickets.filter(t => t.werk === String(w));
-    const act = a.filter(t => t.status !== "erledigt");
-    h += `<tr><td>Werk ${w}</td><td>${act.length}</td><td>${act.filter(t => t.prio === "dringend").length}</td><td>${act.filter(t => t.status === "teil").length}</td><td>${a.length - act.length}</td></tr>`;
+    const act = a.filter(t => t.status !== "erledigt" && !hid(t));
+    h += `<tr><td>Werk ${w}</td><td>${act.length}</td><td>${act.filter(t => t.prio === "dringend").length}</td><td>${act.filter(t => t.status === "teil").length}</td><td>${a.filter(t => t.status === "erledigt").length}</td></tr>`;
   }
   $("evalBody").innerHTML = h + "</table>";
 }
@@ -409,17 +418,23 @@ function runPlans() {
   let made = 0;
   db.plans.forEach(p => {
     if (p.next > today()) return;
-    db.tickets.push(newTicket({title: p.title, werk: p.werk, prio: p.prio, status: "offen", from: "Wartungsplan", due: p.next, desc: "Wiederkehrende Wartung (" + INT[p.int] + ")"}));
+    db.tickets.push(newTicket({title: p.title, werk: p.werk, prio: p.prio, status: "offen", from: "Wartungsplan", plan: p.id, due: p.next, desc: "Wiederkehrende Wartung (" + INT[p.int] + ")"}));
     made++;
     for (let g = 0; p.next <= today() && g < 400; g++) p.next = addInt(p.next, p.int);
   });
   if (made) save();
   return made;
 }
+function hiddenHtml() {
+  const list = db.tickets.filter(hid).sort((a, b) => a.due.localeCompare(b.due));
+  if (!list.length) return "";
+  return `<h3>Vorgemerkte Wartungen (noch nicht fällig)</h3>` + list.map(t =>
+    `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">#${t.no} ${esc(t.title)}</b><br><small class="meta">Werk ${t.werk} · fällig ${fd(t.due)}</small></span><button class="sec" style="margin:0" onclick="$('plan').style.display='none';openSheet('${t.id}')">Öffnen</button></div>`).join("");
+}
 function renderPlan() {
-  $("planList").innerHTML = db.plans.map((p, i) =>
+  $("planList").innerHTML = (db.plans.map((p, i) =>
     `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(p.title)}</b><br><small class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</small></span><b onclick="delPlan(${i})">✕</b></div>`).join("")
-    || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`;
+    || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`) + hiddenHtml();
 }
 function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
 function addPlan() {
