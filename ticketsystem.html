@@ -37,7 +37,7 @@ button.del{background:#c0392b}
 .title{font-weight:700;font-size:17px;overflow-wrap:anywhere}
 .badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
 .pr-dringend{background:#d64545;color:#fff}.pr-hoch{background:#e8892b;color:#fff}.pr-normal{background:rgba(59,139,196,.2);color:var(--pr)}.pr-niedrig{background:var(--sec);color:var(--mu)}
-.s-offen{background:rgba(214,69,69,.15);color:#d64545}.s-bearbeitung{background:rgba(59,139,196,.2);color:#2f7fb8}.s-teil{background:rgba(232,137,43,.2);color:#c46d12}.s-angebot{background:rgba(142,84,196,.2);color:#9b59d0}.s-pr{background:rgba(0,150,160,.2);color:#0a9aa5}.s-po{background:rgba(60,100,200,.2);color:#3a64c8}.s-dienstleister{background:rgba(220,170,20,.22);color:#b8860b}.s-warten{background:rgba(138,154,168,.25);color:var(--mu)}.s-erledigt{background:rgba(46,160,90,.2);color:#2a9a57}
+.s-offen{background:rgba(214,69,69,.15);color:#d64545}.s-bearbeitung{background:rgba(59,139,196,.2);color:#2f7fb8}.s-teil{background:rgba(232,137,43,.2);color:#c46d12}.s-angebot{background:rgba(142,84,196,.2);color:#9b59d0}.s-angebotda{background:rgba(142,84,196,.32);color:#8a45c4}.s-pr{background:rgba(0,150,160,.2);color:#0a9aa5}.s-po{background:rgba(60,100,200,.2);color:#3a64c8}.s-dienstleister{background:rgba(220,170,20,.22);color:#b8860b}.s-warten{background:rgba(138,154,168,.25);color:var(--mu)}.s-erledigt{background:rgba(46,160,90,.2);color:#2a9a57}
 .meta{color:var(--mu);font-size:14px;margin:6px 0;overflow-wrap:anywhere}
 .late{color:#d64545;font-weight:700}
 .txt{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -52,6 +52,8 @@ button.del{background:#c0392b}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
 .th{position:relative}.th img{width:84px;height:84px;object-fit:cover;border-radius:10px;display:block}
 .th b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px}
+.fchip{display:inline-block;background:var(--sec);border-radius:99px;padding:4px 10px;margin:4px 6px 0 0;font-size:13px}.fchip a{color:var(--tx);text-decoration:none}.fchip b{cursor:pointer;margin-left:6px}
+.frow{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px}.frow .nm{flex:1;min-width:0;overflow-wrap:anywhere}.frow button{margin:0;padding:6px 10px}
 img.mini{width:56px;height:56px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;cursor:pointer}
 #lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:30;align-items:center;justify-content:center}
 #lb img{max-width:100%;max-height:100%}
@@ -102,7 +104,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-15c (Sync, mehrere PO)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-15d (Sync, Angebote als Datei)</small></p>
 </main>
 
 
@@ -140,6 +142,10 @@ label{font-weight:600;font-size:14px}
   <div id="phlist" class="thumbs"></div>
   <input id="phfile" type="file" accept="image/*" multiple hidden onchange="addPhotos(event)">
   <button class="sec" onclick="$('phfile').click()" style="margin:4px 0 12px">📷 Foto hinzufügen</button><br>
+  <label>Angebote / Dokumente <small class="meta">(PDF oder Word)</small></label>
+  <div id="flist"></div>
+  <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden onchange="addDocs(event)">
+  <button class="sec" onclick="$('dofile').click()" style="margin:4px 0 12px">📎 Datei hinzufügen</button><br>
   <label for="f_notes">Notizen</label>
   <textarea id="f_notes" rows="3"></textarea>
   <div id="histBox" hidden><label>Verlauf</label><ul class="hist" id="hist"></ul></div>
@@ -208,12 +214,12 @@ label{font-weight:600;font-size:14px}
 "use strict";
 const $ = id => document.getElementById(id);
 const KEY = "petersTickets";
-const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", angebot:"Angebot angefordert", pr:"PR erstellt", po:"PO erstellt", dienstleister:"Dienstleister beauftragt", warten:"Warten auf Rückmeldung", erledigt:"Erledigt"};
+const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", angebot:"Angebot angefordert", angebotda:"Angebot liegt vor", pr:"PR erstellt", po:"PO erstellt", dienstleister:"Dienstleister beauftragt", warten:"Warten auf Rückmeldung", erledigt:"Erledigt"};
 const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
 const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
 const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
 let db = {next: 1, tickets: [], plans: [], rooms: []};
-let editPl = [], editPh = [], editPo = [];
+let editPl = [], editPh = [], editPo = [], editFl = [], newFl = [], goneFl = [];
 
 try {
   const s = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -222,6 +228,7 @@ try {
 if (!Array.isArray(db.plans)) db.plans = [];
 if (!Array.isArray(db.rooms)) db.rooms = [];
 db.tickets.forEach(t => {
+  if (!Array.isArray(t.files)) t.files = [];
   if (!Array.isArray(t.pos)) t.pos = t.po ? [{f: "", n: String(t.po)}] : [];
   delete t.po;
   if (!Array.isArray(t.pl)) t.pl = parseParts(t.parts);
@@ -300,6 +307,7 @@ function render() {
       ${t.desc ? `<div class="txt">${esc(t.desc)}</div>` : ""}
       ${t.pos && t.pos.length ? `<div class="meta">🧾 ${t.pos.map(x => (x.f ? esc(x.f) + ": " : "PO ") + esc(x.n)).join(" · ")}</div>` : ""}
       ${t.pl && t.pl.length ? `<div class="meta">🔧 ${t.pl.map(p => ["⬜","📦","✅"][p.s] + " " + esc(p.n)).join(" · ")}</div>` : ""}
+      ${t.files && t.files.length ? `<div class="meta">${t.files.map(f => `<span class="fchip"><a href="#" onclick="openDoc('${f.id}');return false">📎 ${esc(f.n)}</a> <b onclick="shareDoc('${t.id}','${f.id}')" aria-label="Weiterleiten">✉️</b></span>`).join(" ")}</div>` : ""}
       ${(t.photos || []).map(p => `<img class="mini" src="${p}" onclick="showImg(this.src)" alt="Foto">`).join("")}
       <div class="act">
         <select onchange="setStatus('${t.id}', this.value)" aria-label="Status ändern">${opts(ST).replace(`value="${t.status}"`, `value="${t.status}" selected`)}</select>
@@ -334,6 +342,8 @@ function openSheet(id) {
   editPh = t ? t.photos.slice() : [];
   editPo = t && t.pos ? t.pos.map(x => ({f: x.f, n: x.n})) : [];
   renderPo();
+  editFl = t && t.files ? t.files.map(x => ({...x})) : []; newFl = []; goneFl = [];
+  renderFiles();
   renderParts(); renderPhotos();
   $("histBox").hidden = !t;
   $("hist").innerHTML = t ? t.history.slice().reverse().map(h => `<li>${ft(h.t)} – ${ST[h.s] || esc(h.s)}</li>`).join("") : "";
@@ -343,12 +353,15 @@ function openSheet(id) {
   togPO();
   if (!t) $("f_title").focus();
 }
-function closeSheet() { $("sheet").style.display = "none"; }
+function closeSheet() {
+  newFl.forEach(id => fdel(id)); newFl = []; goneFl = [];
+  $("sheet").style.display = "none";
+}
 
 function saveTicket() {
   const v = {};
   K.forEach(k => v[k] = $("f_" + k).value.trim());
-  v.pl = editPl; v.photos = editPh;
+  v.pl = editPl; v.photos = editPh; v.files = editFl;
   v.pos = editPo.filter(x => x.f.trim() || x.n.trim()).map(x => ({f: x.f.trim(), n: x.n.trim()}));
   if (!v.title) { alert("Bitte einen Titel eingeben."); $("f_title").focus(); return; }
   const snapshot = JSON.stringify(db), id = $("f_id").value;
@@ -360,6 +373,7 @@ function saveTicket() {
     db.tickets.push(Object.assign({id: uid(), no: db.next++, created: now(), history: [{t: now(), s: v.status}]}, v));
   }
   if (!save()) { db = JSON.parse(snapshot); return; }
+  goneFl.forEach(id => fdel(id)); newFl = []; goneFl = [];
   closeSheet();
   render();
 }
@@ -378,10 +392,81 @@ function setStatus(id, s) {
 function delTicket() {
   const t = db.tickets.find(x => x.id === $("f_id").value);
   if (!t || !confirm("Ticket #" + t.no + " wirklich löschen?")) return;
+  (t.files || []).forEach(f => fdel(f.id));
   db.tickets = db.tickets.filter(x => x.id !== t.id);
   save();
+  newFl = []; goneFl = [];
   closeSheet();
   render();
+}
+
+/* ---------- Angebote / Dokumente (Dateien bleiben auf dem Gerät, IndexedDB) ---------- */
+
+const DBN = "petersTicketFiles";
+const idb = () => new Promise((ok, no) => {
+  const r = indexedDB.open(DBN, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("f");
+  r.onsuccess = () => ok(r.result);
+  r.onerror = () => no(r.error);
+});
+async function fput(id, blob) { const d = await idb(); return new Promise((ok, no) => { const t = d.transaction("f", "readwrite"); t.objectStore("f").put(blob, id); t.oncomplete = ok; t.onerror = () => no(t.error); }); }
+async function fget(id) { const d = await idb(); return new Promise((ok, no) => { const r = d.transaction("f").objectStore("f").get(id); r.onsuccess = () => ok(r.result || null); r.onerror = () => no(r.error); }); }
+function fdel(id) { idb().then(d => d.transaction("f", "readwrite").objectStore("f").delete(id)).catch(() => {}); }
+
+async function addDocs(e) {
+  for (const f of e.target.files) {
+    if (!/\.(pdf|docx?)$/i.test(f.name)) { alert("„" + f.name + "“ ist weder PDF noch Word."); continue; }
+    if (f.size > 15 * 1024 * 1024) { alert("„" + f.name + "“ ist größer als 15 MB."); continue; }
+    try {
+      const id = uid();
+      await fput(id, f);
+      editFl.push({id: id, n: f.name, s: f.size, y: f.type || ""});
+      newFl.push(id);
+    } catch (x) { alert("Die Datei konnte nicht gespeichert werden."); }
+  }
+  e.target.value = "";
+  renderFiles();
+}
+function renderFiles() {
+  $("flist").innerHTML = editFl.map((f, i) =>
+    `<div class="frow"><span class="nm">📎 ${esc(f.n)} <small class="meta">${Math.max(1, Math.round((f.s || 0) / 1024))} KB</small></span><button class="sec" type="button" onclick="openDoc('${f.id}')">Öffnen</button><button class="sec" type="button" onclick="shareDoc('${$("f_id").value}','${f.id}')">✉️</button><button class="sec" type="button" onclick="delDoc(${i})" aria-label="Entfernen">✕</button></div>`).join("");
+}
+function delDoc(i) {
+  if (!confirm("Datei „" + editFl[i].n + "“ entfernen?")) return;
+  const f = editFl.splice(i, 1)[0];
+  if (newFl.includes(f.id)) { newFl = newFl.filter(x => x !== f.id); fdel(f.id); } else goneFl.push(f.id);
+  renderFiles();
+}
+async function docBlob(id) {
+  const b = await fget(id);
+  if (!b) alert("Diese Datei liegt nur auf dem Gerät, auf dem sie angehängt wurde. Hänge sie hier noch einmal an.");
+  return b;
+}
+async function openDoc(id) {
+  const b = await docBlob(id);
+  if (!b) return;
+  const url = URL.createObjectURL(b);
+  const w = window.open(url, "_blank");
+  if (!w) { const a = document.createElement("a"); a.href = url; a.download = b.name || "Datei"; a.click(); }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+// Weiterleiten per E-Mail: Teilen-Menü (Gmail & Co. mit Anhang); sonst Datei speichern + E-Mail-Entwurf
+async function shareDoc(tid, id) {
+  const t = db.tickets.find(x => x.id === tid) || db.tickets.find(x => (x.files || []).some(f => f.id === id));
+  const meta = (t && (t.files || []).find(f => f.id === id)) || editFl.find(f => f.id === id);
+  const b = await docBlob(id);
+  if (!b || !meta) return;
+  const subject = "Angebot" + (t ? " – Ticket #" + t.no + " " + t.title : "");
+  const text = "Anbei das Angebot" + (t ? " zu Ticket #" + t.no + " (" + t.title + ", Werk " + t.werk + ")" : "") + ".";
+  const file = new File([b], meta.n, {type: b.type || meta.y || "application/octet-stream"});
+  try {
+    if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: subject, text: text}); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const url = URL.createObjectURL(file), a = document.createElement("a");
+  a.href = url; a.download = meta.n; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  alert("Die Datei wurde gespeichert. Der E-Mail-Entwurf öffnet sich jetzt, bitte die Datei dort als Anhang hinzufügen.");
+  location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(text);
 }
 
 /* ---------- Teile, Fotos ---------- */
@@ -581,6 +666,7 @@ function clean(r) {
   K.forEach(k => t[k] = String(r[k] || "").trim());
   t.pl = Array.isArray(r.pl) ? r.pl.map(p => ({n: String(p.n || ""), s: Math.min(2, +p.s || 0)})).filter(p => p.n) : parseParts(r.parts);
   t.pos = Array.isArray(r.pos) ? r.pos.map(x => ({f: String(x.f || ""), n: String(x.n || "")})).filter(x => x.f || x.n) : parsePos(r.po);
+  t.files = Array.isArray(r.files) ? r.files.map(x => ({id: String(x.id || ""), n: String(x.n || ""), s: +x.s || 0, y: String(x.y || "")})).filter(x => x.id && x.n) : [];
   t.photos = Array.isArray(r.photos) ? r.photos.filter(p => /^data:image\/jpeg;base64,/.test(p)).slice(0, 4) : [];
   t.werk = ["1","2","3","4","5"].includes(t.werk) ? t.werk : "1";
   t.prio = PR[t.prio] ? t.prio : "normal";
