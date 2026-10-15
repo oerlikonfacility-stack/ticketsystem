@@ -102,7 +102,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-15b (Sync, PO-Nummer)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-15c (Sync, mehrere PO)</small></p>
 </main>
 
 
@@ -119,7 +119,11 @@ label{font-weight:600;font-size:14px}
   </div>
   <label for="f_status">Status</label>
   <select id="f_status" onchange="togPO()"></select>
-  <div id="po_box" hidden><label for="f_po">PO-Nummer</label><input id="f_po" inputmode="numeric" placeholder="z. B. 450012345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)"></div>
+  <div id="po_box" hidden>
+    <label>PO je Dienstleister</label>
+    <div id="poList"></div>
+    <button class="sec" type="button" onclick="addPoRow()" style="margin:4px 0 10px">+ Weitere PO</button>
+  </div>
   <label for="f_from">Von (E-Mail-Absender)</label>
   <input id="f_from" list="senders" placeholder="Name des Absenders">
   <datalist id="senders"></datalist>
@@ -207,9 +211,9 @@ const KEY = "petersTickets";
 const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", angebot:"Angebot angefordert", pr:"PR erstellt", po:"PO erstellt", dienstleister:"Dienstleister beauftragt", warten:"Warten auf Rückmeldung", erledigt:"Erledigt"};
 const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
 const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
-const K = ["title","werk","prio","status","po","from","mail","due","desc","notes"];
+const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
 let db = {next: 1, tickets: [], plans: [], rooms: []};
-let editPl = [], editPh = [];
+let editPl = [], editPh = [], editPo = [];
 
 try {
   const s = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -218,6 +222,8 @@ try {
 if (!Array.isArray(db.plans)) db.plans = [];
 if (!Array.isArray(db.rooms)) db.rooms = [];
 db.tickets.forEach(t => {
+  if (!Array.isArray(t.pos)) t.pos = t.po ? [{f: "", n: String(t.po)}] : [];
+  delete t.po;
   if (!Array.isArray(t.pl)) t.pl = parseParts(t.parts);
   if (!Array.isArray(t.photos)) t.photos = [];
 });
@@ -284,7 +290,6 @@ function render() {
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
     const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
-      t.po ? "PO " + t.po : "",
       t.due ? (isLate ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : "",
       t.status === "erledigt" ? "erledigt am " + new Date(doneAt(t)).toLocaleDateString("de-DE") : ""]
       .filter(Boolean).map((x, i) => i === 0 || x.startsWith("<") ? x : esc(x)).join(" · ");
@@ -293,6 +298,7 @@ function render() {
       <div class="meta">${meta}</div>
       <div><span class="badge s-${t.status}">${ST[t.status]}</span></div>
       ${t.desc ? `<div class="txt">${esc(t.desc)}</div>` : ""}
+      ${t.pos && t.pos.length ? `<div class="meta">🧾 ${t.pos.map(x => (x.f ? esc(x.f) + ": " : "PO ") + esc(x.n)).join(" · ")}</div>` : ""}
       ${t.pl && t.pl.length ? `<div class="meta">🔧 ${t.pl.map(p => ["⬜","📦","✅"][p.s] + " " + esc(p.n)).join(" · ")}</div>` : ""}
       ${(t.photos || []).map(p => `<img class="mini" src="${p}" onclick="showImg(this.src)" alt="Foto">`).join("")}
       <div class="act">
@@ -303,7 +309,21 @@ function render() {
   }).join("") || `<div class="card">Keine Tickets gefunden. Mit „+ Neues Ticket“ legst du ein neues an.</div>`;
 }
 
-function togPO() { $("po_box").hidden = $("f_status").value !== "po" && !$("f_po").value; }
+function togPO() {
+  const isPo = $("f_status").value === "po";
+  if (isPo && !editPo.length) { editPo = [{f: "", n: ""}, {f: "", n: ""}]; renderPo(); }
+  $("po_box").hidden = !isPo && !editPo.length;
+}
+function renderPo() {
+  $("poList").innerHTML = editPo.map((x, i) =>
+    `<div class="two" style="grid-template-columns:1fr 1fr auto;margin-bottom:6px;align-items:center">
+      <input value="${esc(x.f)}" placeholder="Firma" oninput="editPo[${i}].f=this.value">
+      <input value="${esc(x.n)}" inputmode="numeric" placeholder="PO-Nummer" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,12);editPo[${i}].n=this.value">
+      <button class="sec" type="button" onclick="delPoRow(${i})" aria-label="Entfernen" style="margin:0;padding:8px 12px">✕</button>
+    </div>`).join("");
+}
+function addPoRow() { editPo.push({f: "", n: ""}); renderPo(); const i = $("poList").querySelectorAll("input"); if (i.length) i[i.length - 2].focus(); }
+function delPoRow(i) { editPo.splice(i, 1); renderPo(); togPO(); }
 function openSheet(id) {
   const t = db.tickets.find(x => x.id === id);
   $("sTitle").textContent = t ? "Ticket #" + t.no : "Neues Ticket";
@@ -312,6 +332,8 @@ function openSheet(id) {
   if (!t) { $("f_werk").value = "1"; $("f_prio").value = "normal"; $("f_status").value = "offen"; $("f_mail").value = today(); }
   editPl = t ? t.pl.map(p => ({n: p.n, s: p.s})) : [];
   editPh = t ? t.photos.slice() : [];
+  editPo = t && t.pos ? t.pos.map(x => ({f: x.f, n: x.n})) : [];
+  renderPo();
   renderParts(); renderPhotos();
   $("histBox").hidden = !t;
   $("hist").innerHTML = t ? t.history.slice().reverse().map(h => `<li>${ft(h.t)} – ${ST[h.s] || esc(h.s)}</li>`).join("") : "";
@@ -327,6 +349,7 @@ function saveTicket() {
   const v = {};
   K.forEach(k => v[k] = $("f_" + k).value.trim());
   v.pl = editPl; v.photos = editPh;
+  v.pos = editPo.filter(x => x.f.trim() || x.n.trim()).map(x => ({f: x.f.trim(), n: x.n.trim()}));
   if (!v.title) { alert("Bitte einen Titel eingeben."); $("f_title").focus(); return; }
   const snapshot = JSON.stringify(db), id = $("f_id").value;
   const t = db.tickets.find(x => x.id === id);
@@ -349,7 +372,7 @@ function setStatus(id, s) {
   t.history.push({t: now(), s: s});
   if (!save()) db = JSON.parse(snapshot);
   render();
-  if (s === "po" && !t.po) { openSheet(id); $("f_po").focus(); }
+  if (s === "po" && !(t.pos && t.pos.length)) { openSheet(id); const i = $("poList").querySelector("input"); if (i) i.focus(); }
 }
 
 function delTicket() {
@@ -526,11 +549,16 @@ function saveBlob(blob, name) {
 function backupJSON() {
   saveBlob(new Blob([JSON.stringify({format: "PetersTicketsystem", ...db}, null, 2)], {type: "application/json"}), "peters-tickets-backup-" + today() + ".json");
 }
-const CSVH = ["Nr","Titel","Werk","Von","Mail vom","Priorität","Status","PO-Nummer","Fällig bis","Beschreibung","Teile","Notizen","Erstellt"];
+const CSVH = ["Nr","Titel","Werk","Von","Mail vom","Priorität","Status","PO (Firma: Nummer)","Fällig bis","Beschreibung","Teile","Notizen","Erstellt"];
+const posText = t => (t.pos || []).map(x => (x.f ? x.f + ": " : "") + x.n).join(" | ");
+const parsePos = str => String(str || "").split("|").map(x => x.trim()).filter(Boolean).map(x => {
+  const i = x.lastIndexOf(":");
+  return i < 0 ? {f: "", n: x.replace(/\D/g, "")} : {f: x.slice(0, i).trim(), n: x.slice(i + 1).replace(/\D/g, "")};
+}).filter(x => x.f || x.n);
 function backupCSV() {
   if (!db.tickets.length) { alert("Es gibt noch keine Tickets zum Sichern."); return; }
   const c = v => { const s = String(v || ""); return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const rows = db.tickets.map(t => [t.no, t.title, t.werk, t.from, t.mail, PR[t.prio], ST[t.status], t.po, t.due, t.desc, partsText(t), t.notes, t.created].map(c).join(";"));
+  const rows = db.tickets.map(t => [t.no, t.title, t.werk, t.from, t.mail, PR[t.prio], ST[t.status], posText(t), t.due, t.desc, partsText(t), t.notes, t.created].map(c).join(";"));
   saveBlob(new Blob(["\uFEFF" + [CSVH.map(c).join(";")].concat(rows).join("\r\n")], {type: "text/csv;charset=utf-8"}), "peters-tickets-backup-" + today() + ".csv");
 }
 function parseCSV(t, d) {
@@ -552,6 +580,7 @@ function clean(r) {
   const t = {id: r.id || uid(), no: Number(r.no) || 0, created: r.created || now(), history: Array.isArray(r.history) ? r.history : []};
   K.forEach(k => t[k] = String(r[k] || "").trim());
   t.pl = Array.isArray(r.pl) ? r.pl.map(p => ({n: String(p.n || ""), s: Math.min(2, +p.s || 0)})).filter(p => p.n) : parseParts(r.parts);
+  t.pos = Array.isArray(r.pos) ? r.pos.map(x => ({f: String(x.f || ""), n: String(x.n || "")})).filter(x => x.f || x.n) : parsePos(r.po);
   t.photos = Array.isArray(r.photos) ? r.photos.filter(p => /^data:image\/jpeg;base64,/.test(p)).slice(0, 4) : [];
   t.werk = ["1","2","3","4","5"].includes(t.werk) ? t.werk : "1";
   t.prio = PR[t.prio] ? t.prio : "normal";
@@ -580,7 +609,7 @@ async function importFile(e) {
       const col = (r, n) => { const i = h.indexOf(n); return i < 0 ? "" : r[i]; };
       inc = rows.slice(1).map(r => ({
         no: col(r, "nr"), title: col(r, "titel"), werk: col(r, "werk"), from: col(r, "von"), mail: col(r, "mail vom"),
-        prio: rev(PR, col(r, "priorität")), status: rev(ST, col(r, "status")) || (/teil muss/i.test(col(r, "status")) ? "teil" : /^wart/i.test(col(r, "status")) ? "warten" : ""), po: col(r, "po-nummer"), due: col(r, "fällig bis"),
+        prio: rev(PR, col(r, "priorität")), status: rev(ST, col(r, "status")) || (/teil muss/i.test(col(r, "status")) ? "teil" : /^wart/i.test(col(r, "status")) ? "warten" : ""), po: col(r, "po (firma: nummer)") || col(r, "po-nummer"), due: col(r, "fällig bis"),
         desc: col(r, "beschreibung"), parts: col(r, "teile"), notes: col(r, "notizen"), created: col(r, "erstellt")
       }));
     }
