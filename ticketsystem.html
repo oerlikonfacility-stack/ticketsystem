@@ -86,7 +86,6 @@ label{font-weight:600;font-size:14px}
 </header>
 
 <main>
-  <button onclick="openSheet('')" style="width:100%;margin:0 0 10px;font-size:18px">+ Neues Ticket</button>
   <div class="seg" id="seg"><button data-v="aktiv" onclick="setView('aktiv')">Aktiv</button><button data-v="erledigt" onclick="setView('erledigt')">✅ Erledigt-Archiv</button></div>
   <div class="two" style="margin-bottom:10px">
     <button class="sec" id="roomBtn" onclick="openRooms()" style="margin:0;padding:12px 6px;font-size:15px">🚪 Besprechungsräume</button>
@@ -107,7 +106,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16a (Schulungen mit Archiv)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16b (ohne oberen Neu-Button)</small></p>
 </main>
 
 
@@ -337,7 +336,7 @@ function render() {
         <button class="sec" onclick="openSheet('${t.id}')">Öffnen</button>
       </div>
     </article>`;
-  }).join("") || `<div class="card">Keine Tickets gefunden. Mit „+ Neues Ticket“ legst du ein neues an.</div>`;
+  }).join("") || `<div class="card">Keine Tickets gefunden. Mit dem runden „+“ unten rechts legst du ein neues an.</div>`;
 }
 
 function togPO() {
