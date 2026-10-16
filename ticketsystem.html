@@ -107,7 +107,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-15e (Schulungstermine)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16a (Schulungen mit Archiv)</small></p>
 </main>
 
 
@@ -652,14 +652,17 @@ const schTs = x => new Date(x.d + "T" + (x.tm || "09:00")).getTime();
 const fmtD = d => d.split("-").reverse().join(".");
 function renderSchul() {
   const now = Date.now();
-  const list = db.schul.slice().sort((a, b) => schTs(a) - schTs(b));
-  $("schList").innerHTML = list.map(x => {
+  const row = x => {
     const past = schTs(x) < now;
-    return `<div class="pi" style="cursor:default;${past ? "opacity:.55" : ""}"><span><b style="padding:0;color:inherit">${esc(x.t)}</b><br><small class="meta">${fmtD(x.d)}${x.tm ? ", " + esc(x.tm) + " Uhr" : ""}${x.o ? " · " + esc(x.o) : ""}${x.a ? " · Ausbilder: " + esc(x.a) : ""}</small></span>
+    return `<div class="pi" style="cursor:default;${past ? "opacity:.6" : ""}"><span><b style="padding:0;color:inherit">${past ? "✅ " : ""}${esc(x.t)}</b><br><small class="meta">${fmtD(x.d)}${x.tm ? ", " + esc(x.tm) + " Uhr" : ""}${x.o ? " · " + esc(x.o) : ""}${x.a ? " · Ausbilder: " + esc(x.a) : ""}</small></span>
       <span style="white-space:nowrap"><b onclick="icsSchul('${x.id}')" aria-label="Kalender">📅</b> <b onclick="editSchul('${x.id}')" aria-label="Bearbeiten">✏️</b> <b onclick="delSchul('${x.id}')" aria-label="Löschen">✕</b></span></div>`;
-  }).join("") || `<p class="meta">Noch keine Schulungstermine eingetragen.</p>`;
-  const n = db.schul.filter(x => schTs(x) >= now).length;
-  $("schBtn").textContent = "🎓 Schulungstermine" + (n ? " (" + n + ")" : "");
+  };
+  const up = db.schul.filter(x => schTs(x) >= now).sort((a, b) => schTs(a) - schTs(b));
+  const old = db.schul.filter(x => schTs(x) < now).sort((a, b) => schTs(b) - schTs(a));
+  $("schList").innerHTML =
+    "<h3 style='margin:4px 0'>Kommende (" + up.length + ")</h3>" + (up.map(row).join("") || `<p class="meta">Keine kommenden Schulungen.</p>`) +
+    (old.length ? "<h3 style='margin:14px 0 4px'>Archiv – durchgeführt (" + old.length + ")</h3>" + old.map(row).join("") : "");
+  $("schBtn").textContent = "🎓 Schulungstermine" + (up.length ? " (" + up.length + ")" : "");
 }
 function clearSchulForm() { $("s_id").value = ""; $("s_t").value = ""; $("s_o").value = ""; $("s_d").value = ""; $("s_tm").value = "09:00"; $("s_a").value = ""; $("schT").textContent = "Neue Schulung"; }
 function openSchul() { clearSchulForm(); renderSchul(); $("schul").style.display = "block"; $("schul").scrollTop = 0; }
