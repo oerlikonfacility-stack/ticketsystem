@@ -45,8 +45,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#plan,#rooms,#schul,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#plan .in,#rooms .in,#schul .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#plan,#rooms,#schul,#ent,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#plan .in,#rooms .in,#schul .in,#ent .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -92,7 +92,10 @@ label{font-weight:600;font-size:14px}
     <button class="sec" id="roomBtn" onclick="openRooms()" style="margin:0;padding:12px 6px;font-size:15px">🚪 Besprechungsräume</button>
     <button class="sec" id="schBtn" onclick="openSchul()" style="margin:0;padding:12px 6px;font-size:15px">🎓 Schulungstermine</button>
   </div>
-  <button class="sec" id="planBtn" onclick="openPlan()" style="width:100%;margin:0 0 10px;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
+  <div class="two" style="margin-bottom:10px">
+    <button class="sec" id="planBtn" onclick="openPlan()" style="margin:0;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
+    <button class="sec" id="entBtn" onclick="openEnt()" style="margin:0;padding:12px 6px;font-size:15px">♻️ Entsorger</button>
+  </div>
   <div class="filters">
     <select id="fStatus" aria-label="Status"></select>
     <select id="fWerk" aria-label="Werk"></select>
@@ -100,7 +103,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16i</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16j (Entsorger)</small></p>
 </main>
 
 
@@ -192,6 +195,28 @@ label{font-weight:600;font-size:14px}
   <button onclick="saveSchul()">Speichern</button>
   <button class="sec" onclick="$('schul').style.display='none'">Schließen</button>
 </div></div>
+<div id="ent"><div class="in">
+  <h2>♻️ Entsorger</h2>
+  <small class="meta">Wer holt was ab, wie oft und wo – als Nachschlagewerk für den Betrieb.</small>
+  <input id="e_q" type="search" placeholder="🔎 Suchen (Firma, Material, Werk …)" aria-label="Entsorger suchen" oninput="renderEnt()" style="margin-top:10px">
+  <div id="entList"></div>
+  <h3 id="entT">Neuer Entsorger</h3>
+  <input id="e_id" type="hidden">
+  <label for="e_f">Firma *</label>
+  <input id="e_f" placeholder="z. B. Remondis">
+  <label for="e_m">Was wird abgeholt? (Materialien)</label>
+  <textarea id="e_m" rows="3" placeholder="z. B. Restmüll, Papier, Altöl, Leuchtstoffröhren"></textarea>
+  <label for="e_r">Rhythmus</label>
+  <input id="e_r" placeholder="z. B. jeden 2. Dienstag / nach Abruf / 1× pro Quartal">
+  <label for="e_w">Werk / Abholort</label>
+  <input id="e_w" placeholder="z. B. Werk 2, Hof hinten">
+  <label for="e_k">Kontakt (Ansprechpartner, Telefon, E-Mail)</label>
+  <textarea id="e_k" rows="2" placeholder="z. B. Herr Meier, 0171 1234567, meier@firma.de"></textarea>
+  <label for="e_n">Notizen (Kundennummer, Vertrag, Besonderheiten)</label>
+  <textarea id="e_n" rows="3"></textarea>
+  <button onclick="saveEnt()">Speichern</button>
+  <button class="sec" onclick="$('ent').style.display='none'">Schließen</button>
+</div></div>
 <div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
 
 <div id="syncs"><div class="in">
@@ -226,7 +251,7 @@ const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", a
 const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
 const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
 const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
-let db = {next: 1, tickets: [], plans: [], rooms: [], schul: []};
+let db = {next: 1, tickets: [], plans: [], rooms: [], schul: [], ent: []};
 let editPl = [], editPh = [], editPo = [], editFl = [], newFl = [], goneFl = [];
 
 try {
@@ -236,6 +261,7 @@ try {
 if (!Array.isArray(db.plans)) db.plans = [];
 if (!Array.isArray(db.rooms)) db.rooms = [];
 if (!Array.isArray(db.schul)) db.schul = [];
+if (!Array.isArray(db.ent)) db.ent = [];
 db.tickets.forEach(t => {
   if (!Array.isArray(t.files)) t.files = [];
   if (!Array.isArray(t.pos)) t.pos = t.po ? [{f: "", n: String(t.po)}] : [];
@@ -302,6 +328,7 @@ function render() {
     $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")" + (dueN ? " · ⚠️ " + dueN + " fällig" : "");
   }
   $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
+  $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
     const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
@@ -711,6 +738,43 @@ setInterval(checkSchul, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkSchul(); });
 setTimeout(() => { checkSchul(); renderSchul(); }, 1500);
 
+/* ---------- Entsorger ---------- */
+
+const ENT_F = ["f", "m", "r", "w", "k", "n"];
+function renderEnt() {
+  const q = $("e_q").value.trim().toLowerCase();
+  const list = db.ent.slice().sort((a, b) => a.f.localeCompare(b.f, "de")).filter(x => !q || ENT_F.some(k => String(x[k] || "").toLowerCase().includes(q)));
+  const line = (ic, v) => v ? `<div class="meta" style="white-space:pre-wrap">${ic} ${esc(v)}</div>` : "";
+  $("entList").innerHTML = list.map(x =>
+    `<div class="card" style="margin-top:8px"><div class="top"><div class="title">${esc(x.f)}</div><span style="white-space:nowrap"><b onclick="editEnt('${x.id}')" aria-label="Bearbeiten">✏️</b> <b onclick="delEnt('${x.id}')" aria-label="Löschen">✕</b></span></div>
+      ${line("🗑️", x.m)}${line("🔄", x.r)}${line("📍", x.w)}${line("📞", x.k)}${line("📝", x.n)}</div>`).join("")
+    || `<p class="meta">${db.ent.length ? "Nichts gefunden." : "Noch keine Entsorger eingetragen."}</p>`;
+  $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
+}
+function clearEntForm() { ["e_id", "e_f", "e_m", "e_r", "e_w", "e_k", "e_n"].forEach(i => $(i).value = ""); $("entT").textContent = "Neuer Entsorger"; }
+function openEnt() { $("e_q").value = ""; clearEntForm(); renderEnt(); $("ent").style.display = "block"; $("ent").scrollTop = 0; }
+function editEnt(id) {
+  const x = db.ent.find(y => y.id === id); if (!x) return;
+  $("e_id").value = x.id; $("e_f").value = x.f; $("e_m").value = x.m || ""; $("e_r").value = x.r || ""; $("e_w").value = x.w || ""; $("e_k").value = x.k || ""; $("e_n").value = x.n || "";
+  $("entT").textContent = "Entsorger bearbeiten"; $("ent").scrollTop = $("ent").scrollHeight; $("e_f").focus();
+}
+function saveEnt() {
+  const f = $("e_f").value.trim();
+  if (!f) { alert("Bitte die Firma eintragen."); $("e_f").focus(); return; }
+  const snapshot = JSON.stringify(db), id = $("e_id").value;
+  const v = {id: id || uid(), f: f, m: $("e_m").value.trim(), r: $("e_r").value.trim(), w: $("e_w").value.trim(), k: $("e_k").value.trim(), n: $("e_n").value.trim()};
+  const i = db.ent.findIndex(y => y.id === id);
+  if (i >= 0) db.ent[i] = v; else db.ent.push(v);
+  if (!save()) { db = JSON.parse(snapshot); return; }
+  clearEntForm(); $("e_q").value = ""; renderEnt();
+}
+function delEnt(id) {
+  const x = db.ent.find(y => y.id === id);
+  if (!x || !confirm("Entsorger „" + x.f + "“ löschen?")) return;
+  db.ent = db.ent.filter(y => y.id !== id);
+  save(); renderEnt();
+}
+
 /* ---------- Backup / Import ---------- */
 
 function saveBlob(blob, name) {
@@ -769,13 +833,14 @@ async function importFile(e) {
   if (!file) return;
   try {
     const text = new TextDecoder("utf-8").decode(new Uint8Array(await file.arrayBuffer()));
-    let inc = [], pin = [], rin = [], sin = [];
+    let inc = [], pin = [], rin = [], sin = [], ein = [];
     if (/\.json$/i.test(file.name)) {
       const d = JSON.parse(text);
       inc = Array.isArray(d) ? d : d.tickets;
       pin = Array.isArray(d.plans) ? d.plans : [];
       rin = Array.isArray(d.rooms) ? d.rooms : [];
       sin = Array.isArray(d.schul) ? d.schul : [];
+      ein = Array.isArray(d.ent) ? d.ent : [];
       if (!Array.isArray(inc)) throw new Error("Ungültige Backup-Datei");
     } else {
       const rows = parseCSV(text, (text.split(/\r?\n/)[0].match(/;/g) || []).length >= (text.split(/\r?\n/)[0].match(/,/g) || []).length ? ";" : ",");
@@ -804,6 +869,7 @@ async function importFile(e) {
     });
     rin.forEach(r => { if (r && r.id && r.t && !db.rooms.some(x => x.id === r.id || x.t.toLowerCase() === String(r.t).toLowerCase())) db.rooms.push({id: r.id, t: String(r.t)}); });
     sin.forEach(r => { if (r && r.id && r.t && r.d && !db.schul.some(x => x.id === r.id)) db.schul.push({id: r.id, t: String(r.t), o: r.o || "", d: String(r.d), tm: r.tm || "", a: r.a || ""}); });
+    ein.forEach(r => { if (r && r.id && r.f && !db.ent.some(x => x.id === r.id)) db.ent.push({id: r.id, f: String(r.f), m: r.m || "", r: r.r || "", w: r.w || "", k: r.k || "", n: r.n || ""}); });
     pin.forEach(p => { if (p && p.title && p.next && INT[p.int] && !db.plans.some(x => x.id === p.id)) db.plans.push(p); });
     if (!save()) { db = JSON.parse(snapshot); return; }
     render();
@@ -852,7 +918,7 @@ try { cfg = JSON.parse(localStorage.getItem(SC) || "null"); } catch (e) {}
 try { meta = JSON.parse(localStorage.getItem(SM) || "{}"); } catch (e) {}
 const saveMeta = () => { try { localStorage.setItem(SM, JSON.stringify(meta)); } catch (e) {} };
 const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h; };
-const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]));
+const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]), db.ent.map(x => ["e", x]));
 
 function setState(txt) {
   $("syncBtn").textContent = "☁️ Sync: " + txt;
@@ -899,12 +965,13 @@ function applyRemote(id, r) {
     db.plans = db.plans.filter(x => x.id !== id);
     db.rooms = db.rooms.filter(x => x.id !== id);
     db.schul = db.schul.filter(x => x.id !== id);
+    db.ent = db.ent.filter(x => x.id !== id);
     meta[id] = {h: 0, u: r.upd, p: 0, k: r.k, del: true};
     return true;
   }
   let x;
   try { x = JSON.parse(r.d); } catch (e) { return false; }
-  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : db.tickets, i = list.findIndex(y => y.id === id);
+  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : r.k === "e" ? db.ent : db.tickets, i = list.findIndex(y => y.id === id);
   if (r.k === "t") {
     if (!Array.isArray(x.pl)) x.pl = [];
     if (!Array.isArray(x.photos)) x.photos = [];
@@ -928,6 +995,7 @@ function startListen(user) {
       if ($("plan").style.display === "block") renderPlan();
       if ($("rooms").style.display === "block") renderRooms();
       renderSchul();
+      if ($("ent").style.display === "block") renderEnt(); else $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
     }
     setState(snap.metadata.fromCache ? "offline (lokal)" : "synchronisiert");
   }, e => setState("Fehler: " + (e.code || e.message)));
