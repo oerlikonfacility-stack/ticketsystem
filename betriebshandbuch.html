@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#17324d">
+<title>Peters Betriebshandbuch</title>
+<style>
+:root{--bg:#f1f4f7;--card:#fff;--tx:#182431;--mu:#667581;--bd:#dce3e9;--pr:#245d86;--hd:#17324d;--sec:#e0e8ef;--ok:#2e9e5b;--warn:#e8892b;--bad:#d64545}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1720;--card:#18232f;--tx:#e8eef4;--mu:#93a4b3;--bd:#27384a;--pr:#3b8bc4;--hd:#0b2236;--sec:#223446}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;overflow:hidden}
+input,select,textarea,button{font:inherit;padding:9px 11px;border-radius:9px;color:var(--tx)}
+input,select,textarea{width:100%;border:1px solid var(--bd);background:var(--card);margin:3px 0 10px}
+textarea{resize:vertical}
+button{border:0;background:var(--pr);color:#fff;font-weight:600;cursor:pointer;margin:2px;white-space:nowrap}
+button.sec{background:var(--sec);color:var(--tx)}
+button.del{background:#c0392b}
+button.sm{padding:5px 10px;font-size:13px}
+a{color:var(--pr);font-weight:600}
+label{font-weight:600;font-size:13px;color:var(--mu)}
+h2{margin:0 0 4px;font-size:21px}
+h3{margin:18px 0 6px;font-size:15px}
+.meta{color:var(--mu);font-size:13.5px;margin:4px 0;overflow-wrap:anywhere}
+.late{color:var(--bad);font-weight:700}
+#top{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;background:var(--hd);color:#fff;position:relative;z-index:20}
+#top h1{margin:0;font-size:19px;white-space:nowrap}
+#gqw{flex:1;max-width:640px;position:relative}
+#gq{margin:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;padding:8px 12px}
+#gq::placeholder{color:#c5d6e4}
+#gres{display:none;position:absolute;left:0;right:0;top:44px;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-height:70vh;overflow:auto}
+#gres .r{padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer}
+#gres .r:hover{background:var(--sec)}
+#gres small{color:var(--mu)}
+.tl{background:none;border:0;color:#c5d6e4;text-decoration:underline;font-weight:400;font-size:13.5px;padding:4px 6px;margin:0}
+#spacer{flex:0}
+#app{display:grid;grid-template-columns:230px 390px 1fr;height:calc(100vh - 56px)}
+#app.full{grid-template-columns:230px 1fr}
+#app.full #lp{display:none}
+#nav{overflow:auto;background:var(--card);border-right:1px solid var(--bd);padding:8px 8px 30px}
+#nav .gh{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:14px 8px 4px;font-weight:700}
+#nav button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;color:var(--tx);font-weight:500;margin:1px 0;padding:8px 10px}
+#nav button:hover{background:var(--sec)}
+#nav button.on{background:var(--pr);color:#fff;font-weight:700}
+#nav button .n{margin-left:auto;font-size:12px;opacity:.75}
+#nav button .w{margin-left:auto;font-size:12px;background:var(--warn);color:#fff;border-radius:99px;padding:1px 8px}
+#lp{overflow:auto;border-right:1px solid var(--bd);padding:12px}
+#dp{overflow:auto;padding:18px 24px 60px}
+.lh{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.lh input{margin:0;flex:1}
+.lh button{margin:0;white-space:nowrap}
+.row{background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--bd);border-radius:10px;padding:9px 11px;margin:6px 0;cursor:pointer}
+.row:hover{border-color:var(--pr)}
+.row.on{outline:2px solid var(--pr)}
+.row .t{font-weight:700;overflow-wrap:anywhere}
+.row.p-dringend{border-left-color:var(--bad)}.row.p-hoch{border-left-color:var(--warn)}.row.p-normal{border-left-color:#3b8bc4}.row.p-niedrig{border-left-color:#8a9aa8}
+.row.done{opacity:.6}
+.gh2{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);font-weight:700;margin:14px 2px 2px}
+.badge{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;margin-right:4px}
+.pr-dringend{background:#d64545;color:#fff}.pr-hoch{background:#e8892b;color:#fff}.pr-normal{background:rgba(59,139,196,.2);color:var(--pr)}.pr-niedrig{background:var(--sec);color:var(--mu)}
+.s-offen{background:rgba(214,69,69,.15);color:#d64545}.s-bearbeitung{background:rgba(59,139,196,.2);color:#2f7fb8}.s-teil{background:rgba(232,137,43,.2);color:#c46d12}.s-angebot{background:rgba(142,84,196,.2);color:#9b59d0}.s-angebotda{background:rgba(142,84,196,.32);color:#8a45c4}.s-pr{background:rgba(0,150,160,.2);color:#0a9aa5}.s-po{background:rgba(60,100,200,.2);color:#3a64c8}.s-dienstleister{background:rgba(120,120,60,.2);color:#8a8a2a}.s-warten{background:rgba(150,150,150,.25);color:var(--mu)}.s-erledigt{background:rgba(46,158,91,.2);color:var(--ok)}
+.dh{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.dh h2{flex:1;overflow-wrap:anywhere}
+.dh button{margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.grid .w{grid-column:1/-1}
+.kv{margin-bottom:10px}.kv .k{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu);font-weight:700}.kv .v{white-space:pre-wrap;overflow-wrap:anywhere}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.card h3{margin:0 0 8px}
+.big{font-size:30px;font-weight:800;line-height:1}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;min-width:112px;cursor:pointer}
+.kpi small{display:block;color:var(--mu)}
+.li{padding:6px 0;border-bottom:1px solid var(--bd);cursor:pointer}
+.li:last-child{border:0}
+.li:hover .t{text-decoration:underline}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
+.th{position:relative}.th img{width:110px;height:110px;object-fit:cover;border-radius:10px;display:block;cursor:pointer}
+.th b{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:12px;cursor:pointer}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--sec);border-radius:99px;padding:4px 12px;margin:3px 6px 3px 0;font-size:13px}
+.chip b{cursor:pointer}
+.pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:9px;padding:7px 10px;margin:4px 0}
+.pi span{flex:1;overflow-wrap:anywhere}.pi b{cursor:pointer;padding:0 6px;color:var(--mu)}
+.bar{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.po{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-bottom:4px}
+.po input{margin:0}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t td,table.t th{padding:5px 6px;border-bottom:1px solid var(--bd);text-align:left}
+table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
+.hist{font-size:13px;color:var(--mu);margin:0;padding-left:18px}
+.seg{display:flex;gap:6px;margin-bottom:8px}
+.seg button{flex:1;margin:0;background:var(--sec);color:var(--tx)}
+.seg button.on{background:var(--pr);color:#fff}
+.fl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.fl select{margin:0;padding:7px 6px;font-size:13px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;align-items:center;justify-content:center}
+.modal .box{background:var(--bg);border-radius:14px;padding:20px 22px;width:min(560px,94vw);max-height:90vh;overflow:auto}
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:50;align-items:center;justify-content:center;cursor:zoom-out}
+#lb img{max-width:96%;max-height:96%}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#182431;color:#fff;padding:10px 18px;border-radius:99px;z-index:60;display:none}
+.empty{color:var(--mu);padding:30px 10px;text-align:center}
+@media(max-width:1000px){
+ body{overflow:auto}
+ #app,#app.full{display:block;height:auto}
+ #nav{display:flex;flex-wrap:wrap;gap:2px;border-right:0;border-bottom:1px solid var(--bd);padding:6px}
+ #nav .gh{display:none}
+ #nav button{width:auto}
+ #lp{border-right:0;border-bottom:1px solid var(--bd);max-height:45vh}
+ #dp{padding:14px}
+ .grid{grid-template-columns:1fr}
+ #top h1{font-size:15px}
+}
+</style>
+</head>
+<body>
+<div id="top">
+  <h1>📘 Peters Betriebshandbuch</h1>
+  <div id="gqw"><input id="gq" type="search" placeholder="🔎 Alles durchsuchen (Tickets, Geräte, Firmen, Schlüssel …)  –  Taste /" autocomplete="off"><div id="gres"></div></div>
+  <span id="spacer"></span>
+  <button class="tl" id="syncBtn" onclick="openSync()">☁️ Sync: aus</button>
+  <button class="tl" onclick="openSys()">⚙️ System</button>
+</div>
+<div id="app">
+  <nav id="nav"></nav>
+  <section id="lp"></section>
+  <section id="dp"></section>
+</div>
+
+<div class="modal" id="syncs"><div class="box">
+  <h2>☁️ Synchronisierung</h2>
+  <p class="meta" id="syncInfo"></p>
+  <p class="meta">Läuft über dasselbe Firebase-Konto wie Ticketsystem, Reise-App und Adressbuch. Ist der Sync dort im selben Browser schon eingerichtet, ist er hier automatisch aktiv.</p>
+  <label for="s_cfg">Firebase-Konfiguration (Block „firebaseConfig“ einfügen)</label>
+  <textarea id="s_cfg" rows="6" placeholder='const firebaseConfig = { apiKey: "…", authDomain: "…", projectId: "…", appId: "…" };'></textarea>
+  <label for="s_mail">E-Mail</label>
+  <input id="s_mail" type="email" autocomplete="username">
+  <label for="s_pw">Passwort</label>
+  <input id="s_pw" type="password" autocomplete="current-password">
+  <button onclick="connectSync()">Verbinden</button>
+  <button class="sec" onclick="disconnectSync()">Sync aus</button>
+  <button class="sec" onclick="$('syncs').style.display='none'">Schließen</button>
+</div></div>
+
+<div class="modal" id="sys"><div class="box">
+  <h2>⚙️ System</h2>
+  <p class="meta">Sicherung aller Bereiche (Tickets, Geräte, Firmen …) mit Fotos. Dateien (PDF/Word) bleiben nur in diesem Browser und sind nicht im Backup.</p>
+  <button onclick="backupJSON()" style="width:100%;margin:4px 0">Backup speichern (JSON)</button>
+  <button class="sec" onclick="$('file').click()" style="width:100%;margin:4px 0">Backup importieren (JSON, auch vom Ticketsystem)</button>
+  <input id="file" type="file" accept=".json" hidden onchange="importFile(event)">
+  <button class="sec" onclick="importFromTicketsystem()" style="width:100%;margin:4px 0">Daten aus dem Ticketsystem übernehmen (gleicher Browser)</button>
+  <p class="meta" id="verInfo"></p>
+  <button class="sec" onclick="$('sys').style.display='none'" style="width:100%;margin:10px 0 0">Schließen</button>
+</div></div>
+
+<div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
+<div id="toast"></div>
+<input id="phfile" type="file" accept="image/*" multiple hidden>
+<input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
+<script>
+"use strict";
+const VERSION = "2026-10-16a (Betriebshandbuch, erste Version)";
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fd = s => s ? String(s).split("-").reverse().join(".") : "";
+const now = () => new Date().toISOString();
+const ft = t => new Date(t).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit"});
+const today = () => new Date().toLocaleDateString("sv-SE");
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const opts = (o, sel) => Object.keys(o).map(k => `<option value="${esc(k)}"${String(k) === String(sel) ? " selected" : ""}>${esc(o[k])}</option>`).join("");
+const toast = m => { const t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", 1800); };
+const showImg = src => { $("lbi").src = src; $("lb").style.display = "flex"; };
+
+/* Mail- und Telefon-Links (Text wird vorher escaped) */
+function linkify(v) {
+  return esc(v)
+    .replace(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, m => `<a href="mailto:${m}">${m}</a>`)
+    .replace(/(^|[\s:(,;])((?:\+|00)?\d[\d ()\/\-]{6,}\d)/g, (all, pre, num) => {
+      const d = num.replace(/[^\d+]/g, "");
+      return d.replace(/\D/g, "").length >= 6 ? `${pre}<a href="tel:${d}">${num}</a>` : all;
+    });
+}
+
+/* ---------- Konstanten ---------- */
+const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", angebot:"Angebot angefordert", angebotda:"Angebot liegt vor", pr:"PR erstellt", po:"PO erstellt", dienstleister:"Dienstleister beauftragt", warten:"Warten auf Rückmeldung", erledigt:"Erledigt"};
+const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
+const PRO = {dringend:0, hoch:1, normal:2, niedrig:3};
+const WERKE = {1:"Werk 1", 2:"Werk 2", 3:"Werk 3", 4:"Werk 4", 5:"Werk 5"};
+const INT = {d7:"Wöchentlich", d14:"Alle 2 Wochen", m1:"Monatlich", m3:"Vierteljährlich", m6:"Halbjährlich", m12:"Jährlich"};
+const PE = ["⬜", "📦", "✅"];
+const PLAN_LEAD_DAYS = 7;
+const K_TICKET = ["title","werk","prio","status","from","mail","due","desc","notes"];
+
+/* ---------- Daten ---------- */
+const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], lager:[], zaehler:[], pruef:[]});
+const LISTS = Object.keys(emptyDb()).filter(k => k !== "next");
+const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", l:"lager", z:"zaehler", c:"pruef"};
+const SHARED = new Set(["t","p","r","s","e"]);     // liegen im selben Firebase-Ordner wie das Ticketsystem
+const kindOf = list => Object.keys(KIND).find(k => KIND[k] === list);
+let db = emptyDb();
+
+function normalize() {
+  LISTS.forEach(l => { if (!Array.isArray(db[l])) db[l] = []; });
+  db.tickets = db.tickets.map(clean);
+  db.next = Math.max(db.next || 1, ...db.tickets.map(t => (t.no || 0) + 1));
+}
+function clean(r) {
+  const t = {id: r.id || uid(), no: Number(r.no) || 0, created: r.created || now(), history: Array.isArray(r.history) ? r.history : []};
+  K_TICKET.forEach(k => t[k] = String(r[k] || "").trim());
+  t.pl = Array.isArray(r.pl) ? r.pl.map(p => ({n: String(p.n || ""), s: Math.min(2, +p.s || 0)})).filter(p => p.n) : [];
+  t.pos = Array.isArray(r.pos) ? r.pos.map(x => ({f: String(x.f || ""), n: String(x.n || "")})).filter(x => x.f || x.n) : [];
+  t.files = Array.isArray(r.files) ? r.files.map(x => ({id: String(x.id || ""), n: String(x.n || ""), s: +x.s || 0, y: String(x.y || "")})).filter(x => x.id && x.n) : [];
+  t.photos = Array.isArray(r.photos) ? r.photos.filter(p => /^data:image\/jpeg;base64,/.test(p)).slice(0, 4) : [];
+  t.werk = WERKE[t.werk] ? t.werk : "1";
+  t.prio = PR[t.prio] ? t.prio : "normal";
+  t.status = ST[t.status] ? t.status : "offen";
+  if (r.plan) t.plan = r.plan;
+  if (!t.title) t.title = "Ticket ohne Titel";
+  if (!t.history.length) t.history.push({t: t.created, s: t.status});
+  return t;
+}
+
+/* Speicherung in IndexedDB (viel größer als localStorage, wichtig für Fotos) */
+const idbOpen = (name, store) => new Promise((ok, no) => {
+  const r = indexedDB.open(name, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(store);
+  r.onsuccess = () => ok(r.result);
+  r.onerror = () => no(r.error);
+});
+let _hdb = null;
+const hdb = () => _hdb || (_hdb = idbOpen("petersHandbuch", "k"));
+async function hget(k) { const d = await hdb(); return new Promise((ok, no) => { const r = d.transaction("k").objectStore("k").get(k); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); }
+async function hput(k, v) { const d = await hdb(); return new Promise((ok, no) => { const t = d.transaction("k", "readwrite"); t.objectStore("k").put(v, k); t.oncomplete = ok; t.onerror = () => no(t.error); }); }
+let saveWarned = false;
+function save() {
+  hput("db", JSON.stringify(db)).catch(() => { if (!saveWarned) { saveWarned = true; alert("Speichern im Browser nicht möglich (Speicher voll oder gesperrt). Bitte ein Backup erstellen."); } });
+  setTimeout(syncLocal, 0);
+  return true;
+}
+async function loadDb() {
+  try { const v = await hget("db"); if (v) db = Object.assign(emptyDb(), JSON.parse(v)); } catch (e) {}
+  normalize();
+}
+
+/* Dateien (PDF/Word) – gleiche Ablage wie im Ticketsystem, nur in diesem Browser */
+const fdbOpen = () => idbOpen("petersTicketFiles", "f");
+async function fput(id, blob) { const d = await fdbOpen(); return new Promise((ok, no) => { const t = d.transaction("f", "readwrite"); t.objectStore("f").put(blob, id); t.oncomplete = ok; t.onerror = () => no(t.error); }); }
+async function fget(id) { const d = await fdbOpen(); return new Promise((ok, no) => { const r = d.transaction("f").objectStore("f").get(id); r.onsuccess = () => ok(r.result || null); r.onerror = () => no(r.error); }); }
+function fdel(id) { fdbOpen().then(d => d.transaction("f", "readwrite").objectStore("f").delete(id)).catch(() => {}); }
+
+/* Formular-Zwischenspeicher (immer nur ein Formular offen) */
+let edPh = [], edFl = [], newFl = [], goneFl = [], edPl = [], edPo = [];
+const resetEd = () => { newFl.forEach(fdel); edPh = []; edFl = []; newFl = []; goneFl = []; edPl = []; edPo = []; };
+
+function shrink(file, max, q) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const i = new Image();
+      i.onload = () => {
+        const s = Math.min(1, max / Math.max(i.width, i.height)), c = document.createElement("canvas");
+        c.width = Math.round(i.width * s); c.height = Math.round(i.height * s);
+        c.getContext("2d").drawImage(i, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", q));
+      };
+      i.onerror = rej; i.src = r.result;
+    };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+}
+let phMax = 3, phSize = 800, phQ = 0.62;
+$("phfile").onchange = async e => {
+  for (const f of e.target.files) {
+    if (edPh.length >= phMax) { alert("Maximal " + phMax + " Fotos pro Eintrag."); break; }
+    try { edPh.push(await shrink(f, phSize, phQ)); } catch (x) { alert("Ein Foto konnte nicht verarbeitet werden."); }
+  }
+  e.target.value = ""; redrawMedia();
+};
+$("dofile").onchange = async e => {
+  for (const f of e.target.files) {
+    if (!/\.(pdf|docx?)$/i.test(f.name)) { alert("„" + f.name + "“ ist weder PDF noch Word."); continue; }
+    if (f.size > 25 * 1024 * 1024) { alert("„" + f.name + "“ ist größer als 25 MB."); continue; }
+    try { const id = uid(); await fput(id, f); edFl.push({id: id, n: f.name, s: f.size, y: f.type || ""}); newFl.push(id); }
+    catch (x) { alert("Die Datei konnte nicht gespeichert werden."); }
+  }
+  e.target.value = ""; redrawMedia();
+};
+function mediaHtml(withPh, withFl) {
+  let h = "";
+  if (withPh) h += `<label>Fotos (max. ${phMax})</label><div class="thumbs" id="m_ph">${edPh.map((p, i) => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt=""><b onclick="edPh.splice(${i},1);redrawMedia()">✕</b></span>`).join("")}</div><button class="sec sm" type="button" onclick="$('phfile').click()">📷 Foto hinzufügen</button>`;
+  if (withFl) h += `<div style="margin-top:10px"><label>Dokumente (PDF / Word, bleiben nur in diesem Browser)</label><div id="m_fl">${edFl.map((f, i) => `<span class="chip">📎 ${esc(f.n)} <b onclick="openDoc('${f.id}')" title="Öffnen">↗</b> <b onclick="mailDoc('${f.id}',mailSubj())" title="Per E-Mail weiterleiten">✉️</b> <b onclick="delDoc(${i})" title="Entfernen">✕</b></span>`).join("")}</div><button class="sec sm" type="button" onclick="$('dofile').click()">📎 Datei hinzufügen</button></div>`;
+  return h;
+}
+function redrawMedia() {
+  const ph = $("m_ph"), fl = $("m_fl");
+  if (ph) ph.innerHTML = edPh.map((p, i) => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt=""><b onclick="edPh.splice(${i},1);redrawMedia()">✕</b></span>`).join("");
+  if (fl) fl.innerHTML = edFl.map((f, i) => `<span class="chip">📎 ${esc(f.n)} <b onclick="openDoc('${f.id}')" title="Öffnen">↗</b> <b onclick="mailDoc('${f.id}',mailSubj())" title="Per E-Mail weiterleiten">✉️</b> <b onclick="delDoc(${i})" title="Entfernen">✕</b></span>`).join("");
+}
+function delDoc(i) { const f = edFl[i]; if (!f) return; if (newFl.includes(f.id)) { fdel(f.id); newFl = newFl.filter(x => x !== f.id); } else goneFl.push(f.id); edFl.splice(i, 1); redrawMedia(); }
+async function openDoc(id) {
+  const b = await fget(id).catch(() => null);
+  if (!b) { alert("Diese Datei liegt nicht in diesem Browser (Dateien werden nicht synchronisiert)."); return; }
+  const url = URL.createObjectURL(b);
+  const w = window.open(url, "_blank");
+  if (!w) { const a = document.createElement("a"); a.href = url; a.download = b.name || "Datei"; a.click(); }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function mailDoc(id, subject) {
+  const b = await fget(id).catch(() => null);
+  if (!b) { alert("Diese Datei liegt nicht in diesem Browser."); return; }
+  const meta = [].concat(...LISTS.map(l => db[l])).flatMap(x => x.files || []).find(f => f.id === id) || {n: "Datei", y: ""};
+  const file = new File([b], meta.n, {type: b.type || meta.y || "application/octet-stream"});
+  try { if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: subject, text: subject}); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  const url = URL.createObjectURL(file), a = document.createElement("a");
+  a.href = url; a.download = meta.n; a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  alert("Die Datei wurde gespeichert. Der E-Mail-Entwurf öffnet sich jetzt, bitte die Datei dort als Anhang hinzufügen.");
+  location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(subject);
+}
+const filesView = (x, subj) => (x.files || []).length ? `<div class="kv"><div class="k">Dokumente</div>${x.files.map(f => `<span class="chip">📎 <a href="#" onclick="openDoc('${f.id}');return false">${esc(f.n)}</a> <b onclick="mailDoc('${f.id}','${esc(subj).replace(/'/g, "")}')" title="Per E-Mail weiterleiten">✉️</b></span>`).join("")}</div>` : "";
+const photosView = x => (x.photos || []).length ? `<div class="thumbs">${x.photos.map(p => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt="Foto"></span>`).join("")}</div>` : "";
+
+/* ---------- Sync (Firebase) ---------- */
+const SC = "petersSyncCfg", SMAIL = "petersSyncMail", SM = "petersHandbuchSyncMeta", SOFF = "petersHandbuchSyncOff";
+let cfg = null, meta = {}, fbdb = null, cols = {items: null, handbuch: null}, unsubs = [], syncStates = {};
+try { cfg = JSON.parse(localStorage.getItem(SC) || "null"); } catch (e) {}
+try { meta = JSON.parse(localStorage.getItem(SM) || "{}"); } catch (e) {}
+const saveMeta = () => { try { localStorage.setItem(SM, JSON.stringify(meta)); } catch (e) {} };
+const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h; };
+const syncItems = () => [].concat(...LISTS.map(l => db[l].map(x => [kindOf(l), x])));
+const collOf = k => SHARED.has(k) ? "items" : "handbuch";
+const syncOff = () => { try { return localStorage.getItem(SOFF) === "1"; } catch (e) { return false; } };
+
+function setState(txt) {
+  $("syncBtn").textContent = "☁️ Sync: " + txt;
+  $("syncInfo").textContent = cfg ? "Status: " + txt : "Noch nicht eingerichtet.";
+}
+function syncLocal() {
+  const seen = new Set();
+  syncItems().forEach(([k, x]) => {
+    seen.add(x.id);
+    const h = hs(JSON.stringify(x)), m = meta[x.id];
+    if (!m || m.h !== h || m.del) meta[x.id] = {h: h, u: Date.now(), p: 1, k: k};
+  });
+  Object.keys(meta).forEach(id => { if (!seen.has(id) && !meta[id].del) meta[id] = {h: 0, u: Date.now(), p: 1, k: meta[id].k, del: true}; });
+  saveMeta();
+  pushPending();
+}
+function pushPending() {
+  Object.keys(meta).forEach(id => {
+    const m = meta[id];
+    if (!m.p || !cols[collOf(m.k)]) return;
+    let d = "";
+    if (!m.del) {
+      const f = syncItems().find(([k, x]) => x.id === id);
+      if (!f) return;
+      d = JSON.stringify(f[1]);
+    }
+    cols[collOf(m.k)].doc(id).set({k: m.k, d: d, upd: m.u, del: !!m.del})
+      .then(() => { if (meta[id] && meta[id].u === m.u) { meta[id].p = 0; saveMeta(); } setState("synchronisiert"); })
+      .catch(e => setState("Fehler: " + (e.code || e.message)));
+  });
+}
+function applyRemote(id, r) {
+  const m = meta[id];
+  if (m && m.u >= r.upd) return false;
+  if (r.del) {
+    LISTS.forEach(l => db[l] = db[l].filter(x => x.id !== id));
+    meta[id] = {h: 0, u: r.upd, p: 0, k: r.k, del: true};
+    return true;
+  }
+  const list = KIND[r.k];
+  if (!list) return false;                     // unbekannte Art (z. B. von einer anderen App): ignorieren
+  let x;
+  try { x = JSON.parse(r.d); } catch (e) { return false; }
+  if (r.k === "t") { x = clean(x); db.next = Math.max(db.next, (x.no || 0) + 1); }
+  const i = db[list].findIndex(y => y.id === id);
+  if (i >= 0) db[list][i] = x; else db[list].push(x);
+  meta[id] = {h: hs(JSON.stringify(x)), u: r.upd, p: 0, k: r.k};
+  return true;
+}
+function startListen(user) {
+  const base = fbdb.collection("users").doc(user.uid);
+  cols.items = base.collection("items");
+  cols.handbuch = base.collection("handbuch");
+  syncLocal();
+  ["items", "handbuch"].forEach(name => {
+    unsubs.push(cols[name].onSnapshot(snap => {
+      let changed = false;
+      snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
+      if (changed) {
+        saveMeta();
+        hput("db", JSON.stringify(db)).catch(() => {});
+        runPlans(); renderAll();
+      }
+      syncStates[name] = snap.metadata.fromCache ? "offline (lokal)" : "synchronisiert";
+      setState(Object.values(syncStates).every(s => s === "synchronisiert") ? "synchronisiert" : "offline (lokal)");
+    }, e => setState(name === "handbuch" && /permission/i.test(e.code + e.message) ? "Regel „handbuch“ fehlt" : "Fehler: " + (e.code || e.message))));
+  });
+}
+const loadScript = src => new Promise((ok, no) => {
+  const el = document.createElement("script");
+  el.src = src; el.onload = ok;
+  el.onerror = () => no(new Error("Firebase konnte nicht geladen werden (kein Internet?)"));
+  document.head.appendChild(el);
+});
+async function initSync() {
+  if (syncOff()) { setState("aus"); return; }
+  if (!cfg || !cfg.apiKey || fbdb) { setState(cfg ? "…" : "aus"); return; }
+  try {
+    const B = "https://www.gstatic.com/firebasejs/10.12.2/";
+    await loadScript(B + "firebase-app-compat.js");
+    await Promise.all([loadScript(B + "firebase-auth-compat.js"), loadScript(B + "firebase-firestore-compat.js")]);
+    firebase.initializeApp(cfg);
+    fbdb = firebase.firestore();
+    firebase.auth().onAuthStateChanged(u => {
+      unsubs.forEach(f => f()); unsubs = []; cols = {items: null, handbuch: null};
+      if (u) startListen(u); else setState("nicht angemeldet");
+    });
+  } catch (e) { setState("offline (lokal)"); }
+}
+function openSync() {
+  $("s_mail").value = localStorage.getItem(SMAIL) || "";
+  $("syncInfo").textContent = cfg ? $("syncBtn").textContent.replace("☁️ Sync: ", "Status: ") : "Noch nicht eingerichtet.";
+  $("syncs").style.display = "flex";
+}
+async function connectSync() {
+  const c = {};
+  $("s_cfg").value.replace(/(\w+)\s*:\s*["']([^"']*)["']/g, (m, k, v) => { c[k] = v; return m; });
+  if (c.apiKey && c.projectId && (!cfg || cfg.apiKey !== c.apiKey)) { cfg = c; localStorage.setItem(SC, JSON.stringify(c)); }
+  if (!cfg || !cfg.apiKey) { alert("Bitte den Block firebaseConfig einfügen."); return; }
+  const mail = $("s_mail").value.trim(), pw = $("s_pw").value;
+  localStorage.removeItem(SOFF);
+  setState("verbinde …");
+  try {
+    await initSync();
+    if (!fbdb) throw new Error("Firebase nicht erreichbar");
+    if (firebase.auth().currentUser && !pw) { $("syncs").style.display = "none"; return; }
+    if (!mail || !pw) { alert("Bitte E-Mail und Passwort eingeben."); return; }
+    await firebase.auth().signInWithEmailAndPassword(mail, pw);
+    localStorage.setItem(SMAIL, mail);
+    $("s_pw").value = ""; $("s_cfg").value = ""; $("syncs").style.display = "none";
+  } catch (e) { alert("Anmeldung fehlgeschlagen: " + (e.code || e.message)); setState("nicht angemeldet"); }
+}
+function disconnectSync() {
+  if (!confirm("Synchronisierung in dieser App ausschalten? Die Daten hier bleiben erhalten, die anderen Apps sind nicht betroffen.")) return;
+  try { unsubs.forEach(f => f()); } catch (e) {}
+  localStorage.setItem(SOFF, "1"); localStorage.removeItem(SM);
+  meta = {}; cols = {items: null, handbuch: null}; unsubs = [];
+  setState("aus"); $("syncs").style.display = "none";
+}
+
+/* ---------- Wartungspläne (Hilfsfunktionen) ---------- */
+const planTicket = t => t.from === "Wartungsplan" || !!t.plan;
+const leadLimit = () => { const l = new Date(); l.setDate(l.getDate() + PLAN_LEAD_DAYS); return l.toLocaleDateString("sv-SE"); };
+const hid = t => planTicket(t) && t.status !== "erledigt";      // Wartungs-Tickets liegen "unter der Haube" der Wartungspläne
+function addInt(date, code) {
+  const d = new Date(date + "T12:00:00"), n = +code.slice(1);
+  if (code[0] === "d") d.setDate(d.getDate() + n); else d.setMonth(d.getMonth() + n);
+  return d.toLocaleDateString("sv-SE");
+}
+function newTicket(o) {
+  const t = clean(o);
+  t.no = db.next++;
+  t.history = [{t: now(), s: "offen"}];
+  return t;
+}
+function runPlans() {
+  let made = 0;
+  db.plans.forEach(p => {
+    if (!p.next || p.next > today()) return;
+    db.tickets.push(newTicket({title: p.title, werk: p.werk, prio: p.prio, status: "offen", from: "Wartungsplan", plan: p.id, due: p.next, desc: "Wiederkehrende Wartung (" + INT[p.int] + ")"}));
+    made++;
+    for (let g = 0; p.next <= today() && g < 400; g++) p.next = addInt(p.next, p.int);
+  });
+  if (made) save();
+  return made;
+}
+const dueWartung = () => { const l = leadLimit(); return db.tickets.filter(t => hid(t) && (!t.due || t.due <= l)); };
+
+/* ---------- Bereiche (Definitionen) ---------- */
+const ART = ["Wasser", "Gas", "Strom", "Heizung", "Druckluft", "Lüftung", "Sonstiges"];
+const MODS = {
+  home:    {ic:"🏠", t:"Übersicht"},
+  tickets: {ic:"🎫", t:"Tickets"},
+  plans:   {ic:"🔁", t:"Wartungspläne"},
+  schul: {ic:"🎓", t:"Schulungstermine", one:"Schulung", nophoto:1,
+    fields:[{k:"t",l:"Was wird geschult?",req:1,w:1},{k:"d",l:"Datum",type:"date",req:1},{k:"tm",l:"Uhrzeit",type:"time"},{k:"o",l:"Ort"},{k:"a",l:"Ausbilder"}],
+    defaults:{tm:"09:00"}, title:x => x.t,
+    sub:x => [fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a ? "Ausbilder: " + x.a : ""],
+    sort:(a, b) => (a.d + (a.tm || "")).localeCompare(b.d + (b.tm || "")),
+    groups:arr => { const n = today(); return [["Kommende", arr.filter(x => x.d >= n)], ["Archiv – durchgeführt", arr.filter(x => x.d < n).reverse()]]; },
+    view:x => `<div class="bar"><button class="sec" onclick="icsSchul('${x.id}')">📅 In Kalender (Erinnerung 1 Std. vorher)</button></div>`},
+  geraete: {ic:"🏭", t:"Anlagen & Geräte", one:"Gerät",
+    fields:[{k:"n",l:"Bezeichnung",req:1,w:1,ph:"z. B. Heizungskessel Werk 2"},{k:"w",l:"Werk",type:"werk"},{k:"o",l:"Standort / Raum"},{k:"h",l:"Hersteller"},{k:"ty",l:"Typ / Modell"},{k:"sn",l:"Seriennummer"},{k:"bj",l:"Baujahr"},{k:"ws",l:"Wartung / Rhythmus",ph:"z. B. jährlich im Mai"},{k:"fi",l:"Zuständige Firma",lk:1},{k:"nt",l:"Notizen",type:"area",w:1,rows:4}],
+    title:x => x.n, sub:x => [x.w ? "Werk " + x.w : "", x.o, x.h]},
+  absperr: {ic:"🚰", t:"Absperrorte", one:"Absperrort",
+    fields:[{k:"n",l:"Was wird abgesperrt?",req:1,w:1,ph:"z. B. Hauptwasserhahn Werk 1"},{k:"art",l:"Art",type:"sel",opts:ART},{k:"w",l:"Werk",type:"werk"},{k:"o",l:"Wo befindet es sich?",type:"area",w:1,rows:2,ph:"z. B. Keller, hinter der Tür links"},{k:"wi",l:"Was ist dann betroffen?",type:"area",w:1,rows:2},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    title:x => x.n, sub:x => [x.art, x.w ? "Werk " + x.w : "", x.o]},
+  schluessel: {ic:"🔑", t:"Schlüssel", one:"Schlüssel", nodocs:1,
+    fields:[{k:"n",l:"Bezeichnung",req:1,w:1,ph:"z. B. Generalschlüssel Werk 3"},{k:"nr",l:"Nummer / Code"},{k:"w",l:"Werk",type:"werk"},{k:"sp",l:"Schließt",type:"area",w:1,rows:2,ph:"Türen / Räume"},{k:"ab",l:"Aufbewahrung"},{k:"wh",l:"Wer hat ihn?"},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    title:x => x.n, sub:x => [x.nr ? "Nr. " + x.nr : "", x.w ? "Werk " + x.w : "", x.wh ? "bei " + x.wh : ""]},
+  firmen: {ic:"🏢", t:"Firmen & Dienstleister", one:"Firma",
+    fields:[{k:"f",l:"Firma",req:1,w:1},{k:"g",l:"Zuständig für",ph:"z. B. Aufzug, Brandmeldeanlage"},{k:"v",l:"Vertrag / Kundennummer"},{k:"k",l:"Kontakt (Ansprechpartner, Telefon, E-Mail)",type:"area",w:1,rows:3,lk:1},{k:"nd",l:"Notdienst",lk:1,w:1},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    title:x => x.f, sub:x => [x.g, x.v ? "KdNr " + x.v : ""]},
+  ent: {ic:"♻️", t:"Entsorger", one:"Entsorger",
+    fields:[{k:"f",l:"Firma",req:1,w:1},{k:"m",l:"Was wird abgeholt? (Materialien)",type:"area",w:1,rows:3},{k:"r",l:"Rhythmus",ph:"z. B. jeden 2. Dienstag"},{k:"w",l:"Werk / Abholort"},{k:"k",l:"Kontakt (Ansprechpartner, Telefon, E-Mail)",type:"area",w:1,rows:2,lk:1},{k:"n",l:"Notizen (Kundennummer, Vertrag …)",type:"area",w:1,rows:3,lk:1}],
+    title:x => x.f, sub:x => [x.m, x.r]},
+  rooms: {ic:"🚪", t:"Besprechungsräume", one:"Raum", nophoto:1, nodocs:1,
+    fields:[{k:"t",l:"Raum (Name, Werk, Etage)",req:1,w:1,ph:"Gonzen, Werk 2, Erdgeschoss"}],
+    title:x => x.t, sub:() => ""},
+  pruef: {ic:"✅", t:"Prüflisten", one:"Prüfliste", nodocs:1,
+    fields:[{k:"t",l:"Name der Prüfung",req:1,w:1,ph:"z. B. Rundgang Notbeleuchtung"},{k:"i",l:"Intervall",type:"sel",opts:INT,empty:"kein fester Rhythmus"},{k:"w",l:"Werk",type:"werk"},{k:"pts",l:"Prüfpunkte (einer pro Zeile)",type:"area",w:1,rows:8},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    title:x => x.t,
+    sub:x => { const nd = pruefNext(x); return [x.i ? INT[x.i] : "", nd === "–" ? "" : nd === "nie" ? "noch nie geprüft" : "nächste: " + fd(nd)]; },
+    flag:x => { const nd = pruefNext(x); return (nd === "nie" && x.i) || (nd !== "–" && nd !== "nie" && nd < today()) ? "⚠️ fällig" : ""; },
+    view:x => pruefView(x)},
+  zaehler: {ic:"📈", t:"Zählerstände", one:"Zähler", nodocs:1,
+    fields:[{k:"n",l:"Zähler",req:1,w:1,ph:"z. B. Wasserzähler Werk 2"},{k:"e",l:"Einheit",ph:"m³ / kWh"},{k:"w",l:"Werk",type:"werk"},{k:"s",l:"Standort / Zählernummer",w:1},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    title:x => x.n,
+    sub:x => { const v = zaeSorted(x), l = v[v.length - 1]; return [l ? fd(l.d) + ": " + l.w + " " + (x.e || "") : "noch kein Wert", x.w ? "Werk " + x.w : ""]; },
+    flag:x => { const v = zaeSorted(x), l = v[v.length - 1]; return !l || (Date.now() - new Date(l.d)) / 864e5 > 35 ? "⚠️ Ablesung fällig" : ""; },
+    view:x => zaeView(x)},
+  lager: {ic:"📦", t:"Lager & Ersatzteile", one:"Artikel", nodocs:1,
+    fields:[{k:"n",l:"Bezeichnung",req:1,w:1},{k:"o",l:"Lagerort"},{k:"b",l:"Bestand",type:"num"},{k:"mn",l:"Mindestbestand",type:"num"},{k:"e",l:"Einheit",ph:"Stk"},{k:"l",l:"Lieferant"},{k:"nr",l:"Artikelnummer"},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
+    defaults:{e:"Stk", b:"0"},
+    title:x => x.n, sub:x => [(x.b || 0) + " " + (x.e || "") + (x.mn ? " (min. " + x.mn + ")" : ""), x.o],
+    flag:x => x.mn !== "" && x.mn != null && Number(x.b || 0) < Number(x.mn) ? "⚠️ unter Mindestbestand" : "",
+    view:x => `<div class="bar"><b style="align-self:center">Bestand ändern:</b><button class="sec" onclick="lagerAdj('${x.id}',-1)">− 1</button><button class="sec" onclick="lagerAdj('${x.id}',1)">+ 1</button><button class="sec" onclick="lagerAdj('${x.id}',-5)">− 5</button><button class="sec" onclick="lagerAdj('${x.id}',5)">+ 5</button></div>`}
+};
+const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms","pruef","zaehler","lager"];
+const NAV = [
+  ["", ["home"]],
+  ["Aufträge", ["tickets","plans","schul"]],
+  ["Anlagen & Wissen", ["geraete","absperr","schluessel","firmen","ent","rooms"]],
+  ["Kontrolle & Verbrauch", ["pruef","zaehler","lager"]]
+];
+
+/* ---------- Zustand & Rahmen ---------- */
+const S = {mod:"home", sel:null, edit:false, q:{}, tv:"aktiv", tw:"", tp:"", ts:""};
+function go(mod, sel) { resetEd(); S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
+function renderAll(force) { renderNav(); renderList(); if (force || !S.edit) renderDetail(); }
+
+function count(mod) {
+  if (mod === "tickets") return db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length;
+  if (mod === "plans") return db.plans.length;
+  if (db[mod]) return db[mod].length;
+  return "";
+}
+function renderNav() {
+  const warn = {plans: dueWartung().length, pruef: db.pruef.filter(x => MODS.pruef.flag(x)).length, zaehler: db.zaehler.filter(x => MODS.zaehler.flag(x)).length, lager: db.lager.filter(x => MODS.lager.flag(x)).length};
+  $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
+    `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
+  $("app").classList.toggle("full", S.mod === "home");
+}
+
+/* ---------- Liste ---------- */
+function itemText(mod, x) {
+  const M = MODS[mod];
+  return M.fields.map(f => f.type === "werk" && x[f.k] ? "werk " + x[f.k] : x[f.k] || "").join(" ").toLowerCase();
+}
+function rowHtml(mod, x) {
+  const M = MODS[mod], sub = [].concat(M.sub(x)).filter(Boolean).map(esc).join(" · "), fl = M.flag ? M.flag(x) : "";
+  const on = S.sel && S.sel.k === "item" && S.sel.id === x.id;
+  return `<div class="row${on ? " on" : ""}" onclick="selItem('${mod}','${x.id}')"><div class="t">${esc(M.title(x))}</div>${sub ? `<div class="meta">${sub}</div>` : ""}${fl ? `<div class="meta late">${fl}</div>` : ""}</div>`;
+}
+function renderList() {
+  const m = S.mod, lp = $("lp");
+  if (m === "home") { lp.innerHTML = ""; return; }
+  if (m === "tickets") return renderTicketList();
+  if (m === "plans") return renderPlanList();
+  const M = MODS[m], q = (S.q[m] || "").toLowerCase();
+  let arr = db[m].slice().sort(M.sort || ((a, b) => M.title(a).localeCompare(M.title(b), "de")));
+  if (q) arr = arr.filter(x => itemText(m, x).includes(q));
+  let body;
+  if (M.groups) body = M.groups(arr).map(([h, a]) => `<div class="gh2">${h} (${a.length})</div>` + (a.map(x => rowHtml(m, x)).join("") || `<div class="meta">–</div>`)).join("");
+  else body = arr.map(x => rowHtml(m, x)).join("") || `<div class="empty">${db[m].length ? "Nichts gefunden." : "Noch keine Einträge."}</div>`;
+  lp.innerHTML = `<div class="lh"><input id="lq" type="search" placeholder="🔎 ${M.t} durchsuchen" value="${esc(S.q[m] || "")}" oninput="S.q['${m}']=this.value;renderList();$('lq').focus();$('lq').setSelectionRange(99,99)"><button onclick="newItem('${m}')">＋ Neu</button></div>${body}`;
+}
+function selItem(mod, id) { resetEd(); S.sel = {k:"item", id: id}; S.edit = false; renderList(); renderDetail(); }
+function newItem(mod) { resetEd(); S.sel = {k:"item", id:""}; S.edit = true; renderList(); renderDetail(true); const f = document.querySelector("#dp input,#dp textarea"); if (f) f.focus(); }
+function editItem() { const x = db[S.mod].find(y => y.id === S.sel.id); resetEd(); if (x) { edPh = (x.photos || []).slice(); edFl = (x.files || []).map(f => ({...f})); } S.edit = true; renderDetail(true); }
+function cancelEdit() { resetEd(); S.edit = false; if (S.sel && !S.sel.id) S.sel = null; renderAll(true); }
+
+/* ---------- Detail (allgemein) ---------- */
+function renderDetail() {
+  const m = S.mod, dp = $("dp");
+  if (m === "home") return renderHome();
+  if (m === "tickets" || (m === "plans" && S.sel && S.sel.k === "ticket")) return renderTicketDetail();
+  if (m === "plans") return renderPlanDetail();
+  if (!S.sel) { dp.innerHTML = `<div class="empty">Links einen Eintrag wählen oder mit „＋ Neu“ anlegen.</div>`; return; }
+  const M = MODS[m], x = db[m].find(y => y.id === S.sel.id);
+  if (S.edit || !x) return dp.innerHTML = formItem(m, x);
+  dp.innerHTML = viewItem(m, x);
+}
+function fieldVal(f, v) {
+  if (f.type === "date") return esc(fd(v));
+  if (f.type === "werk") return "Werk " + esc(v);
+  return f.lk ? linkify(v) : esc(v);
+}
+function viewItem(m, x) {
+  const M = MODS[m];
+  let h = `<div class="dh"><h2>${M.ic} ${esc(M.title(x))}</h2><button class="sec" onclick="editItem()">✏️ Bearbeiten</button><button class="sec" onclick="delItem()">🗑️ Löschen</button></div><div class="grid">`;
+  M.fields.forEach(f => { if (f.k !== M.fields[0].k && x[f.k]) h += `<div class="kv${f.w || f.type === "area" ? " w" : ""}"><div class="k">${esc(f.l)}</div><div class="v">${fieldVal(f, x[f.k])}</div></div>`; });
+  h += `</div>` + photosView(x) + filesView(x, M.title(x));
+  if (M.view) h += M.view(x);
+  return h;
+}
+function fieldInput(f, v) {
+  const id = "g_" + f.k; v = v == null ? "" : v;
+  if (f.type === "area") return `<textarea id="${id}" rows="${f.rows || 3}" placeholder="${esc(f.ph || "")}">${esc(v)}</textarea>`;
+  if (f.type === "werk") return `<select id="${id}"><option value="">–</option>${opts(WERKE, v)}</select>`;
+  if (f.type === "sel") { const o = Array.isArray(f.opts) ? Object.fromEntries(f.opts.map(a => [a, a])) : f.opts; return `<select id="${id}"><option value="">${esc(f.empty || "–")}</option>${opts(o, v)}</select>`; }
+  return `<input id="${id}" type="${f.type === "num" ? "number" : (f.type || "text")}" step="any" value="${esc(v)}" placeholder="${esc(f.ph || "")}">`;
+}
+function formItem(m, x) {
+  const M = MODS[m], isNew = !x, v = x || Object.assign({}, M.defaults || {});
+  let h = `<div class="dh"><h2>${M.ic} ${isNew ? "Neu: " + M.one : "Bearbeiten"}</h2></div><div class="grid">`;
+  M.fields.forEach(f => { h += `<div class="${f.w || f.type === "area" ? "w" : ""}"><label for="g_${f.k}">${esc(f.l)}${f.req ? " *" : ""}</label>${fieldInput(f, v[f.k])}</div>`; });
+  h += `</div>` + mediaHtml(!M.nophoto, !M.nodocs);
+  h += `<div class="bar"><button onclick="saveItem()">💾 Speichern</button><button class="sec" onclick="cancelEdit()">Abbrechen</button></div>`;
+  return h;
+}
+function saveItem() {
+  const m = S.mod, M = MODS[m], o = {};
+  M.fields.forEach(f => o[f.k] = ($("g_" + f.k).value || "").trim());
+  const miss = M.fields.find(f => f.req && !o[f.k]);
+  if (miss) { alert("Bitte „" + miss.l + "“ ausfüllen."); $("g_" + miss.k).focus(); return; }
+  const ex = db[m].find(y => y.id === S.sel.id), it = Object.assign({}, ex || {id: uid()}, o);
+  if (!M.nophoto) it.photos = edPh;
+  if (!M.nodocs) it.files = edFl;
+  const snap = JSON.stringify(db);
+  if (ex) db[m][db[m].indexOf(ex)] = it; else db[m].push(it);
+  if (!save()) { db = JSON.parse(snap); return; }
+  goneFl.forEach(fdel); newFl = []; goneFl = [];
+  S.sel = {k:"item", id: it.id}; S.edit = false;
+  toast("Gespeichert ✓"); renderAll(true);
+}
+function delItem() {
+  const m = S.mod, x = db[m].find(y => y.id === S.sel.id);
+  if (!x || !confirm("„" + MODS[m].title(x) + "“ wirklich löschen?")) return;
+  (x.files || []).forEach(f => fdel(f.id));
+  db[m] = db[m].filter(y => y.id !== x.id);
+  save(); S.sel = null; renderAll(true);
+}
+
+/* ---------- Sonderfunktionen der Bereiche ---------- */
+function icsSchul(id) {
+  const x = db.schul.find(y => y.id === id); if (!x) return;
+  const p = n => String(n).padStart(2, "0"), st = new Date(x.d + "T" + (x.tm || "09:00")), en = new Date(st.getTime() + 3600000);
+  const f = d => d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "T" + p(d.getHours()) + p(d.getMinutes()) + "00";
+  const e = v => String(v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Peter//Betriebshandbuch//DE", "BEGIN:VEVENT", "UID:" + x.id + "@betriebshandbuch", "DTSTAMP:" + f(new Date()), "DTSTART:" + f(st), "DTEND:" + f(en),
+    "SUMMARY:" + e("Schulung: " + x.t), "LOCATION:" + e(x.o || ""), "DESCRIPTION:" + e(x.a ? "Ausbilder: " + x.a : ""), "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + e("Schulung: " + x.t), "TRIGGER:-PT1H", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  saveBlob(new Blob([ics], {type:"text/calendar"}), "Schulung-" + x.d + ".ics");
+}
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; a.style.display = "none";
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 10000);
+}
+function lagerAdj(id, d) {
+  const x = db.lager.find(y => y.id === id); if (!x) return;
+  x.b = String(Math.max(0, Number(x.b || 0) + d));
+  save(); renderAll(true);
+}
+
+/* Prüflisten */
+const pruefLast = x => (x.l || []).map(l => l.d).sort().pop();
+function pruefNext(x) { const l = pruefLast(x); return x.i ? (l ? addInt(l, x.i) : "nie") : "–"; }
+function pruefView(x) {
+  const pts = String(x.pts || "").split("\n").map(s => s.trim()).filter(Boolean), l = (x.l || []).slice().sort((a, b) => b.d.localeCompare(a.d));
+  let h = `<h3>Prüfung durchführen</h3>`;
+  if (!pts.length) h += `<p class="meta">Noch keine Prüfpunkte – über „Bearbeiten“ eintragen.</p>`;
+  else {
+    h += pts.map((p, i) => `<label class="pi" style="color:var(--tx);font-size:15px;font-weight:500;cursor:pointer"><input type="checkbox" id="pc_${i}" style="width:auto;margin:0" checked> <span>${esc(p)}</span></label>`).join("");
+    h += `<p class="meta">Häkchen = in Ordnung. Nicht in Ordnung → Häkchen entfernen.</p><input id="pn" placeholder="Bemerkung (optional)"><button onclick="pruefDone('${x.id}')">✔ Prüfung heute abschließen</button>`;
+  }
+  h += `<h3>Bisherige Prüfungen (${l.length})</h3>`;
+  h += l.length ? `<table class="t"><tr><th>Datum</th><th>Ergebnis</th><th>Bemerkung</th><th></th></tr>${l.map((e, i) => `<tr><td>${fd(e.d)}</td><td>${(e.miss || []).length ? `<span class="late">Mängel: ${esc(e.miss.join(", "))}</span>` : "✅ alles in Ordnung"}</td><td>${esc(e.n || "")}</td><td><b style="cursor:pointer" onclick="pruefDel('${x.id}','${e.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Prüfung eingetragen.</p>`;
+  return h;
+}
+function pruefDone(id) {
+  const x = db.pruef.find(y => y.id === id); if (!x) return;
+  const pts = String(x.pts || "").split("\n").map(s => s.trim()).filter(Boolean);
+  const miss = pts.filter((p, i) => !$("pc_" + i).checked);
+  x.l = (x.l || []).concat([{id: uid(), d: today(), miss: miss, n: $("pn").value.trim()}]);
+  save(); toast(miss.length ? "Prüfung mit Mängeln gespeichert" : "Prüfung gespeichert ✓"); renderAll(true);
+}
+function pruefDel(id, eid) { const x = db.pruef.find(y => y.id === id); if (!x || !confirm("Diesen Prüfeintrag löschen?")) return; x.l = x.l.filter(e => e.id !== eid); save(); renderAll(true); }
+
+/* Zählerstände */
+const zaeSorted = x => (x.v || []).slice().sort((a, b) => a.d.localeCompare(b.d));
+function zaeView(x) {
+  const v = zaeSorted(x), u = x.e || "";
+  const rows = v.map((r, i) => ({d: r.d, w: r.w, id: r.id, diff: i ? r.w - v[i - 1].w : null})).reverse();
+  let h = `<h3>Neuer Ablesewert</h3><div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end"><div><label>Datum</label><input id="z_d" type="date" value="${today()}"></div><div><label>Zählerstand ${esc(u)}</label><input id="z_w" type="number" step="any" onkeydown="if(event.key==='Enter')zaeAdd('${x.id}')"></div><div><button onclick="zaeAdd('${x.id}')" style="margin:0 0 10px">＋ Eintragen</button></div></div>`;
+  const diffs = rows.filter(r => r.diff != null).slice(0, 12).reverse();
+  if (diffs.length) {
+    const mx = Math.max(...diffs.map(r => r.diff), 0.0001), bw = 600 / diffs.length;
+    h += `<h3>Verbrauch je Ablesung</h3><svg viewBox="0 0 600 140" style="width:100%;max-width:640px;background:var(--card);border:1px solid var(--bd);border-radius:10px">${diffs.map((r, i) => { const hh = Math.max(2, r.diff / mx * 90); return `<rect x="${i * bw + 4}" y="${112 - hh}" width="${bw - 8}" height="${hh}" rx="3" fill="var(--pr)"/><text x="${i * bw + bw / 2}" y="${106 - hh}" font-size="10" text-anchor="middle" fill="currentColor">${Math.round(r.diff * 100) / 100}</text><text x="${i * bw + bw / 2}" y="130" font-size="9" text-anchor="middle" fill="currentColor">${r.d.slice(5).split("-").reverse().join(".")}</text>`; }).join("")}</svg>`;
+  }
+  h += `<h3>Ablesungen (${rows.length})</h3>` + (rows.length ? `<table class="t"><tr><th>Datum</th><th>Stand</th><th>Verbrauch seit vorher</th><th></th></tr>${rows.map(r => `<tr><td>${fd(r.d)}</td><td>${r.w} ${esc(u)}</td><td>${r.diff == null ? "–" : Math.round(r.diff * 100) / 100 + " " + esc(u)}</td><td><b style="cursor:pointer" onclick="zaeDel('${x.id}','${r.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Ablesung.</p>`);
+  return h;
+}
+function zaeAdd(id) {
+  const x = db.zaehler.find(y => y.id === id); if (!x) return;
+  const w = parseFloat($("z_w").value), d = $("z_d").value || today();
+  if (isNaN(w)) { alert("Bitte einen Zählerstand eintragen."); $("z_w").focus(); return; }
+  const prev = zaeSorted(x).filter(r => r.d <= d).pop();
+  if (prev && w < prev.w && !confirm("Der Wert ist kleiner als der vorherige (" + prev.w + "). Trotzdem eintragen?")) return;
+  x.v = (x.v || []).concat([{id: uid(), d: d, w: w}]);
+  save(); renderAll(true);
+}
+function zaeDel(id, rid) { const x = db.zaehler.find(y => y.id === id); if (!x || !confirm("Diese Ablesung löschen?")) return; x.v = x.v.filter(r => r.id !== rid); save(); renderAll(true); }
+
+/* ---------- Tickets ---------- */
+const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
+function ticketRow(t) {
+  const on = S.sel && S.sel.k === "ticket" && S.sel.id === t.id, late = t.due && t.due < today() && t.status !== "erledigt";
+  return `<div class="row p-${t.prio}${t.status === "erledigt" ? " done" : ""}${on ? " on" : ""}" onclick="selTicket('${t.id}')"><div class="t">#${t.no} ${esc(t.title)}</div>
+    <div style="margin:3px 0"><span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span></div>
+    <div class="meta">Werk ${t.werk}${t.from ? " · von " + esc(t.from) : ""}${t.due ? " · " + (late ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}</div></div>`;
+}
+function ticketList() {
+  let a = db.tickets.filter(t => !hid(t));
+  const q = (S.q.tickets || "").toLowerCase();
+  if (S.tv === "aktiv") a = a.filter(t => t.status !== "erledigt"); else a = a.filter(t => t.status === "erledigt");
+  if (S.tw) a = a.filter(t => t.werk === S.tw);
+  if (S.tp) a = a.filter(t => t.prio === S.tp);
+  if (S.ts) a = a.filter(t => t.status === S.ts);
+  if (q) a = a.filter(t => ticketText(t).includes(q));
+  return a.sort((x, y) => S.tv === "erledigt" ? doneAt(y).localeCompare(doneAt(x)) : (PRO[x.prio] - PRO[y.prio]) || String(x.due || "9").localeCompare(String(y.due || "9")) || y.created.localeCompare(x.created));
+}
+const ticketText = t => [t.no, t.title, t.werk && "werk " + t.werk, t.from, t.desc, t.notes, (t.pos || []).map(p => p.f + " " + p.n).join(" "), (t.pl || []).map(p => p.n).join(" "), ST[t.status]].join(" ").toLowerCase();
+function renderTicketList() {
+  const act = db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length, arch = db.tickets.filter(t => t.status === "erledigt").length, a = ticketList();
+  $("lp").innerHTML = `<div class="lh"><input id="lq" type="search" placeholder="🔎 Tickets durchsuchen" value="${esc(S.q.tickets || "")}" oninput="S.q.tickets=this.value;renderList();$('lq').focus();$('lq').setSelectionRange(99,99)"><button onclick="newTicketForm()">＋ Neu</button></div>
+  <div class="seg"><button class="${S.tv === "aktiv" ? "on" : ""}" onclick="S.tv='aktiv';renderList()">Aktiv (${act})</button><button class="${S.tv === "erledigt" ? "on" : ""}" onclick="S.tv='erledigt';renderList()">✅ Archiv (${arch})</button></div>
+  <div class="fl"><select onchange="S.tw=this.value;renderList()"><option value="">Alle Werke</option>${opts(WERKE, S.tw)}</select><select onchange="S.tp=this.value;renderList()"><option value="">Alle Prios</option>${opts(PR, S.tp)}</select><select onchange="S.ts=this.value;renderList()"><option value="">Alle Status</option>${opts(ST, S.ts)}</select></div>
+  ${a.map(ticketRow).join("") || `<div class="empty">Keine Tickets.</div>`}`;
+}
+function selTicket(id) {
+  resetEd();
+  const t = db.tickets.find(x => x.id === id); if (!t) return;
+  edPh = t.photos.slice(); edFl = t.files.map(f => ({...f})); edPl = t.pl.map(p => ({...p})); edPo = t.pos.map(p => ({...p}));
+  S.sel = {k:"ticket", id: id}; S.edit = true; renderAll(true);
+}
+function newTicketForm() { resetEd(); S.mod = "tickets"; S.sel = {k:"ticket", id:""}; S.edit = true; renderAll(true); setTimeout(() => $("tf_title") && $("tf_title").focus(), 0); }
+function renderTicketDetail() {
+  phMax = 4; phSize = 640; phQ = 0.7;
+  const dp = $("dp");
+  if (!S.sel || S.sel.k !== "ticket") { dp.innerHTML = `<div class="empty">Links ein Ticket wählen oder mit „＋ Neu“ anlegen.</div>`; return; }
+  const t = db.tickets.find(x => x.id === S.sel.id), v = t || {werk:"1", prio:"normal", status:"offen", mail: today()};
+  dp.innerHTML = `<div class="dh"><h2>🎫 ${t ? "Ticket #" + t.no : "Neues Ticket"}</h2><button onclick="saveTicket()">💾 Speichern</button>${t ? `<button class="sec" onclick="delTicket()">🗑️ Löschen</button>` : ""}</div>
+  <div class="grid">
+    <div class="w"><label>Titel *</label><input id="tf_title" value="${esc(v.title)}" placeholder="z. B. Heizung Halle 3 fällt aus"></div>
+    <div><label>Werk</label><select id="tf_werk">${opts(WERKE, v.werk)}</select></div>
+    <div><label>Priorität</label><select id="tf_prio">${opts(PR, v.prio)}</select></div>
+    <div><label>Status</label><select id="tf_status" onchange="togPO()">${opts(ST, v.status)}</select></div>
+    <div><label>Fällig bis</label><input id="tf_due" type="date" value="${esc(v.due)}"></div>
+    <div id="po_box" class="w" hidden><label>PO je Dienstleister</label><div id="poList"></div><button class="sec sm" type="button" onclick="addPoRow()">＋ Weitere PO</button></div>
+    <div><label>Von (E-Mail-Absender)</label><input id="tf_from" list="senders" value="${esc(v.from)}"><datalist id="senders">${[...new Set(db.tickets.map(x => x.from).filter(Boolean))].sort().map(s => `<option value="${esc(s)}">`).join("")}</datalist></div>
+    <div><label>Mail vom</label><input id="tf_mail" type="date" value="${esc(v.mail)}"></div>
+    <div class="w"><label>Beschreibung</label><textarea id="tf_desc" rows="4" placeholder="Was ist zu tun?">${esc(v.desc)}</textarea></div>
+    <div class="w"><label>Benötigte Teile <span class="meta">(Tippen wechselt: ⬜ offen → 📦 bestellt → ✅ da)</span></label><div id="plist"></div><div style="display:flex;gap:6px"><input id="pnew" placeholder="Teil eintragen" style="margin:0" onkeydown="if(event.key==='Enter'){addPart();event.preventDefault()}"><button class="sec" type="button" onclick="addPart()" style="margin:0">＋ Teil</button></div></div>
+    <div class="w" style="margin-top:10px">${mediaHtml(1, 1)}</div>
+    <div class="w" style="margin-top:10px"><label>Notizen</label><textarea id="tf_notes" rows="3">${esc(v.notes)}</textarea></div>
+  </div>
+  ${t ? `<h3>Verlauf</h3><ul class="hist">${t.history.slice().reverse().map(h => `<li>${ft(h.t)} – ${ST[h.s] || esc(h.s)}</li>`).join("")}</ul>` : ""}`;
+  renderPo(); renderParts(); togPO();
+}
+function togPO() {
+  const isPo = $("tf_status").value === "po";
+  if (isPo && !edPo.length) { edPo = [{f:"", n:""}, {f:"", n:""}]; renderPo(); }
+  $("po_box").hidden = !isPo && !edPo.length;
+}
+function renderPo() {
+  $("poList").innerHTML = edPo.map((x, i) => `<div class="po"><input value="${esc(x.f)}" placeholder="Firma" oninput="edPo[${i}].f=this.value"><input value="${esc(x.n)}" inputmode="numeric" placeholder="PO-Nummer" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,12);edPo[${i}].n=this.value"><button class="sec sm" type="button" onclick="edPo.splice(${i},1);renderPo();togPO()">✕</button></div>`).join("");
+}
+function addPoRow() { edPo.push({f:"", n:""}); renderPo(); const i = $("poList").querySelectorAll("input"); if (i.length) i[i.length - 2].focus(); }
+function renderParts() {
+  $("plist").innerHTML = edPl.map((p, i) => `<div class="pi" style="cursor:pointer" onclick="edPl[${i}].s=(edPl[${i}].s+1)%3;renderParts()"><span>${PE[p.s]} ${esc(p.n)}</span><b onclick="event.stopPropagation();edPl.splice(${i},1);renderParts()">✕</b></div>`).join("");
+}
+function addPart() { const v = $("pnew").value.trim(); if (!v) return; edPl.push({n: v, s: 0}); $("pnew").value = ""; renderParts(); }
+function saveTicket() {
+  const v = {};
+  K_TICKET.forEach(k => v[k] = ($("tf_" + k).value || "").trim());
+  if (!v.title) { alert("Bitte einen Titel eingeben."); $("tf_title").focus(); return; }
+  v.pl = edPl; v.photos = edPh; v.files = edFl;
+  v.pos = edPo.filter(x => x.f.trim() || x.n.trim()).map(x => ({f: x.f.trim(), n: x.n.trim()}));
+  const snap = JSON.stringify(db), id = S.sel.id, t = db.tickets.find(x => x.id === id);
+  let nid = id;
+  if (t) { if (t.status !== v.status) t.history.push({t: now(), s: v.status}); Object.assign(t, v); }
+  else { nid = uid(); db.tickets.push(Object.assign({id: nid, no: db.next++, created: now(), history: [{t: now(), s: v.status}]}, v)); }
+  if (!save()) { db = JSON.parse(snap); return; }
+  goneFl.forEach(fdel); newFl = []; goneFl = [];
+  toast("Gespeichert ✓");
+  selTicket(nid);
+}
+function delTicket() {
+  const t = db.tickets.find(x => x.id === S.sel.id);
+  if (!t || !confirm("Ticket #" + t.no + " wirklich löschen?")) return;
+  t.files.forEach(f => fdel(f.id));
+  db.tickets = db.tickets.filter(x => x.id !== t.id);
+  save(); resetEd(); S.sel = null; S.edit = false; renderAll(true);
+}
+const mailSubj = () => {
+  const t = S.sel && S.sel.k === "ticket" && db.tickets.find(x => x.id === S.sel.id);
+  if (t) return "Angebot – Ticket #" + t.no + " " + t.title;
+  const x = S.sel && db[S.mod] && db[S.mod].find(y => y.id === S.sel.id);
+  return x ? MODS[S.mod].title(x) : "Datei";
+};
+
+/* ---------- Wartungspläne ---------- */
+function renderPlanList() {
+  const l = leadLimit(), all = db.tickets.filter(hid).sort((a, b) => String(a.due || "").localeCompare(String(b.due || "")));
+  const due = all.filter(t => !t.due || t.due <= l), later = all.filter(t => t.due && t.due > l);
+  const trow = t => { const on = S.sel && S.sel.k === "ticket" && S.sel.id === t.id; return `<div class="row${on ? " on" : ""}" onclick="selTicket('${t.id}')"><div class="t">#${t.no} ${esc(t.title)}</div><div style="margin:3px 0"><span class="badge s-${t.status}">${ST[t.status]}</span></div><div class="meta">Werk ${t.werk} · ${t.due && t.due < today() ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}</div></div>`; };
+  $("lp").innerHTML = `<div class="lh"><b style="flex:1">Pläne (${db.plans.length})</b><button onclick="newPlan()">＋ Neuer Plan</button></div>` +
+    db.plans.map(p => { const on = S.sel && S.sel.k === "plan" && S.sel.id === p.id; return `<div class="row${on ? " on" : ""}" onclick="selPlan('${p.id}')"><div class="t">${esc(p.title)}</div><div class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</div></div>`; }).join("") +
+    `<div class="gh2">Fällige Wartungen (${due.length})</div>${due.map(trow).join("") || `<div class="meta">Aktuell ist nichts fällig.</div>`}` +
+    (later.length ? `<div class="gh2">Vorgemerkt – noch nicht fällig (${later.length})</div>${later.map(trow).join("")}` : "");
+}
+function selPlan(id) { resetEd(); S.sel = {k:"plan", id: id}; S.edit = true; renderAll(true); }
+function newPlan() { resetEd(); S.sel = {k:"plan", id:""}; S.edit = true; renderAll(true); setTimeout(() => $("pf_title") && $("pf_title").focus(), 0); }
+function renderPlanDetail() {
+  const dp = $("dp");
+  if (!S.sel || S.sel.k !== "plan") { dp.innerHTML = `<div class="empty">Hier legst du wiederkehrende Aufgaben an (z. B. Legionellenprobe).<br>Ist eine Wartung fällig, erzeugt die App automatisch ein Ticket – es erscheint dann links unter „Fällige Wartungen“, nicht in der normalen Ticketliste.</div>`; return; }
+  const p = db.plans.find(x => x.id === S.sel.id), v = p || {werk:"1", prio:"normal", int:"m1", next: today()};
+  dp.innerHTML = `<div class="dh"><h2>🔁 ${p ? "Wartungsplan" : "Neuer Wartungsplan"}</h2><button onclick="savePlan()">💾 Speichern</button>${p ? `<button class="sec" onclick="delPlan()">🗑️ Löschen</button>` : ""}</div>
+  <div class="grid"><div class="w"><label>Titel *</label><input id="pf_title" value="${esc(v.title)}" placeholder="z. B. Legionellenprobe"></div>
+  <div><label>Werk</label><select id="pf_werk">${opts(WERKE, v.werk)}</select></div><div><label>Priorität</label><select id="pf_prio">${opts(PR, v.prio)}</select></div>
+  <div><label>Intervall</label><select id="pf_int">${opts(INT, v.int)}</select></div><div><label>${p ? "Nächste Fälligkeit" : "Erste Fälligkeit"}</label><input id="pf_next" type="date" value="${esc(v.next)}"></div></div>
+  <p class="meta">Bereits erzeugte Tickets bleiben erhalten, wenn du einen Plan löschst.</p>`;
+}
+function savePlan() {
+  const title = $("pf_title").value.trim();
+  if (!title) { alert("Bitte einen Titel eingeben."); return; }
+  const o = {title: title, werk: $("pf_werk").value, prio: $("pf_prio").value, int: $("pf_int").value, next: $("pf_next").value || today()};
+  const p = db.plans.find(x => x.id === S.sel.id);
+  let id = S.sel.id;
+  if (p) Object.assign(p, o); else { id = uid(); db.plans.push(Object.assign({id: id}, o)); }
+  runPlans(); save(); toast("Gespeichert ✓"); selPlan(id);
+}
+function delPlan() {
+  const p = db.plans.find(x => x.id === S.sel.id);
+  if (!p || !confirm("Wiederkehrende Aufgabe löschen? Bereits erzeugte Tickets bleiben erhalten.")) return;
+  db.plans = db.plans.filter(x => x.id !== p.id); save(); S.sel = null; S.edit = false; renderAll(true);
+}
+
+/* ---------- Übersicht ---------- */
+function openTicket(id) { const t = db.tickets.find(x => x.id === id); if (!t) return; S.mod = hid(t) ? "plans" : "tickets"; if (!hid(t) && t.status === "erledigt") S.tv = "erledigt"; selTicket(id); }
+function openAny(mod, id) {
+  $("gres").style.display = "none";
+  if (mod === "tickets") return openTicket(id);
+  if (mod === "plans") { S.mod = "plans"; return selPlan(id); }
+  go(mod, {k:"item", id: id});
+}
+function renderHome() {
+  const n = today(), akt = db.tickets.filter(t => t.status !== "erledigt" && !hid(t));
+  const late = akt.filter(t => t.due && t.due < n), dr = akt.filter(t => t.prio === "dringend");
+  const dw = dueWartung(), sc = db.schul.filter(x => x.d >= n).sort(MODS.schul.sort);
+  const pf = db.pruef.filter(x => MODS.pruef.flag(x)), zf = db.zaehler.filter(x => MODS.zaehler.flag(x)), lf = db.lager.filter(x => MODS.lager.flag(x));
+  const kpi = (v, l, m, bad) => `<div class="kpi" onclick="go('${m}')"><div class="big" style="${bad && v ? "color:var(--bad)" : ""}">${v}</div><small>${l}</small></div>`;
+  const li = (t, s, on) => `<div class="li" onclick="${on}"><div class="t">${t}</div><div class="meta">${s}</div></div>`;
+  const card = (h, body) => `<div class="card"><h3>${h}</h3>${body}</div>`;
+  const top = akt.slice().sort((a, b) => (PRO[a.prio] - PRO[b.prio]) || String(a.due || "9").localeCompare(String(b.due || "9"))).slice(0, 8);
+  $("dp").innerHTML = `<div class="dh"><h2>🏠 Übersicht</h2></div>
+  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(pf.length, "Prüfungen fällig", "pruef", 1)}${kpi(zf.length, "Ablesungen fällig", "zaehler", 1)}${kpi(lf.length, "Lager unter Minimum", "lager", 1)}</div>
+  <div class="cards">
+  ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
+  ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
+  ${card("🎓 Nächste Schulungen", sc.slice(0, 6).map(x => li(esc(x.t), esc([fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a].filter(Boolean).join(" · ")), `openAny('schul','${x.id}')`)).join("") || `<div class="meta">Keine Termine eingetragen.</div>`)}
+  ${card("✅ Prüfungen fällig", pf.map(x => li(esc(x.t), esc(MODS.pruef.sub(x).filter(Boolean).join(" · ")), `openAny('pruef','${x.id}')`)).join("") || `<div class="meta">Alles geprüft.</div>`)}
+  ${card("📈 Zähler ablesen", zf.map(x => li(esc(x.n), esc(MODS.zaehler.sub(x).filter(Boolean).join(" · ")), `openAny('zaehler','${x.id}')`)).join("") || `<div class="meta">Alle Zähler aktuell.</div>`)}
+  ${card("📦 Lager – nachbestellen", lf.map(x => li(esc(x.n), esc(MODS.lager.sub(x).filter(Boolean).join(" · ")), `openAny('lager','${x.id}')`)).join("") || `<div class="meta">Bestände ok.</div>`)}
+  </div>`;
+}
+
+/* ---------- Globale Suche ---------- */
+function globalSearch(q) {
+  q = q.trim().toLowerCase();
+  const box = $("gres");
+  if (q.length < 2) { box.style.display = "none"; return; }
+  const out = [];
+  db.tickets.forEach(t => { if (ticketText(t).includes(q)) out.push({m:"tickets", id:t.id, ic:"🎫", t:`#${t.no} ${t.title}`, s:`${ST[t.status]} · Werk ${t.werk}`}); });
+  db.plans.forEach(p => { if ((p.title + " werk " + p.werk).toLowerCase().includes(q)) out.push({m:"plans", id:p.id, ic:"🔁", t:p.title, s:`Wartungsplan · ${INT[p.int]}`}); });
+  GEN.forEach(m => db[m].forEach(x => { if (itemText(m, x).includes(q)) out.push({m: m, id: x.id, ic: MODS[m].ic, t: MODS[m].title(x), s: MODS[m].t + " · " + [].concat(MODS[m].sub(x)).filter(Boolean).join(" · ")}); }));
+  box.innerHTML = out.slice(0, 40).map(r => `<div class="r" onclick="openAny('${r.m}','${r.id}')">${r.ic} <b>${esc(r.t)}</b><br><small>${esc(r.s)}</small></div>`).join("") || `<div class="r"><small>Nichts gefunden.</small></div>`;
+  box.style.display = "block";
+}
+$("gq").addEventListener("input", e => globalSearch(e.target.value));
+$("gq").addEventListener("keydown", e => { if (e.key === "Escape") { $("gres").style.display = "none"; e.target.blur(); } });
+document.addEventListener("click", e => { if (!e.target.closest("#gqw")) $("gres").style.display = "none"; });
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $("gq").focus(); $("gq").select(); }
+});
+document.querySelectorAll(".modal").forEach(m => m.addEventListener("mousedown", e => { if (e.target === m) m.style.display = "none"; }));
+
+/* ---------- Backup / Import ---------- */
+function openSys() { $("verInfo").textContent = "Version " + VERSION; $("sys").style.display = "flex"; }
+function backupJSON() { saveBlob(new Blob([JSON.stringify({format:"PetersBetriebshandbuch", ...db}, null, 2)], {type:"application/json"}), "peters-betriebshandbuch-backup-" + today() + ".json"); }
+function mergeDb(d) {
+  if (Array.isArray(d)) d = {tickets: d};
+  let added = 0;
+  LISTS.forEach(l => (Array.isArray(d[l]) ? d[l] : []).forEach(x => {
+    if (!x || !x.id || db[l].some(y => y.id === x.id)) return;
+    if (l === "tickets") { const t = clean(x); if (!t.no || db.tickets.some(y => y.no === t.no)) t.no = db.next++; db.next = Math.max(db.next, t.no + 1); db.tickets.push(t); }
+    else db[l].push(x);
+    added++;
+  }));
+  return added;
+}
+async function importFile(e) {
+  const file = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const d = JSON.parse(new TextDecoder("utf-8").decode(new Uint8Array(await file.arrayBuffer())));
+    const snap = JSON.stringify(db), n = mergeDb(d);
+    if (!n) { alert("Nichts Neues in der Datei gefunden (alles schon vorhanden)."); return; }
+    if (!save()) { db = JSON.parse(snap); return; }
+    runPlans(); renderAll(true); $("sys").style.display = "none"; alert(n + " Einträge importiert.");
+  } catch (x) { alert("Import fehlgeschlagen: " + x.message); }
+}
+function importFromTicketsystem() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem("petersTickets") || "null"); } catch (e) {}
+  if (!d) { alert("Im Browser wurden keine Ticketsystem-Daten gefunden. Das geht nur, wenn das Ticketsystem im selben Browser benutzt wurde. Alternativ ein Backup importieren oder den Sync nutzen."); return; }
+  const snap = JSON.stringify(db), n = mergeDb(d);
+  if (!n) { alert("Alles ist schon vorhanden."); return; }
+  if (!save()) { db = JSON.parse(snap); return; }
+  runPlans(); renderAll(true); $("sys").style.display = "none"; alert(n + " Einträge aus dem Ticketsystem übernommen.");
+}
+
+/* ---------- Start ---------- */
+(async function () {
+  await loadDb();
+  runPlans();
+  renderAll(true);
+  initSync();
+})();
+</script>
+</body>
+</html>
