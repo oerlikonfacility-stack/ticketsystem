@@ -150,6 +150,8 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
   <button class="sec" onclick="$('file').click()" style="width:100%;margin:4px 0">Backup importieren (JSON, auch vom Ticketsystem)</button>
   <input id="file" type="file" accept=".json" hidden onchange="importFile(event)">
   <button class="sec" onclick="importFromTicketsystem()" style="width:100%;margin:4px 0">Daten aus dem Ticketsystem übernehmen (gleicher Browser)</button>
+  <button class="sec" onclick="if(confirm('Beim nächsten Start alle Daten komplett vom Server laden?')){resetSince();location.reload()}" style="width:100%;margin:4px 0">Sync komplett neu laden</button>
+  <button class="sec" onclick="archiveOld()" style="width:100%;margin:4px 0">Alte erledigte Tickets archivieren (älter als 1 Jahr)</button>
   <p class="meta" id="verInfo"></p>
   <button class="sec" onclick="$('sys').style.display='none'" style="width:100%;margin:10px 0 0">Schließen</button>
 </div></div>
@@ -160,7 +162,7 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-16a (Betriebshandbuch, erste Version)";
+const VERSION = "2026-10-16b (Sync lädt nur Änderungen, Archivierung)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -379,15 +381,41 @@ function applyRemote(id, r) {
   meta[id] = {h: hs(JSON.stringify(x)), u: r.upd, p: 0, k: r.k};
   return true;
 }
+/* Inkrementeller Abgleich: Es werden nur Einträge geladen, die sich seit dem letzten Mal geändert haben.
+   Die komplette Kopie liegt ja lokal. Zur Sicherheit wird alle 7 Tage (und bei leerer lokaler Datenbank) komplett neu geladen. */
+const SINCE = "petersHandbuchSince_", FULL_DAYS = 7, SAFETY_MS = 864e5;
+function sinceFor(name) {
+  if (LISTS.every(l => !db[l].length)) return 0;
+  try {
+    const v = JSON.parse(localStorage.getItem(SINCE + name) || "null");
+    if (v && v.full && Date.now() - v.full < FULL_DAYS * 864e5 && v.max > 0) return Math.max(1, v.max - SAFETY_MS);
+  } catch (e) {}
+  return 0;
+}
+function saveSince(name, since, max) {
+  try {
+    const v = JSON.parse(localStorage.getItem(SINCE + name) || "null") || {};
+    localStorage.setItem(SINCE + name, JSON.stringify({max: Math.max(v.max || 0, max || 0), full: since === 0 ? Date.now() : (v.full || Date.now())}));
+  } catch (e) {}
+}
+function resetSince() { ["items", "handbuch"].forEach(n => localStorage.removeItem(SINCE + n)); }
 function startListen(user) {
   const base = fbdb.collection("users").doc(user.uid);
   cols.items = base.collection("items");
   cols.handbuch = base.collection("handbuch");
   syncLocal();
   ["items", "handbuch"].forEach(name => {
-    unsubs.push(cols[name].onSnapshot(snap => {
-      let changed = false;
-      snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
+    const since = sinceFor(name);
+    const q = since ? cols[name].where("upd", ">", since) : cols[name];
+    unsubs.push(q.onSnapshot(snap => {
+      let changed = false, max = 0;
+      snap.docChanges().forEach(c => {
+        if (c.type === "removed") return;
+        const r = c.doc.data();
+        max = Math.max(max, r.upd || 0);
+        if (applyRemote(c.doc.id, r)) changed = true;
+      });
+      if (!snap.metadata.fromCache) saveSince(name, since, max);
       if (changed) {
         saveMeta();
         hput("db", JSON.stringify(db)).catch(() => {});
@@ -445,7 +473,7 @@ async function connectSync() {
 function disconnectSync() {
   if (!confirm("Synchronisierung in dieser App ausschalten? Die Daten hier bleiben erhalten, die anderen Apps sind nicht betroffen.")) return;
   try { unsubs.forEach(f => f()); } catch (e) {}
-  localStorage.setItem(SOFF, "1"); localStorage.removeItem(SM);
+  localStorage.setItem(SOFF, "1"); localStorage.removeItem(SM); resetSince();
   meta = {}; cols = {items: null, handbuch: null}; unsubs = [];
   setState("aus"); $("syncs").style.display = "none";
 }
@@ -923,6 +951,18 @@ async function importFile(e) {
     if (!save()) { db = JSON.parse(snap); return; }
     runPlans(); renderAll(true); $("sys").style.display = "none"; alert(n + " Einträge importiert.");
   } catch (x) { alert("Import fehlgeschlagen: " + x.message); }
+}
+function archiveOld() {
+  const c = new Date(); c.setFullYear(c.getFullYear() - 1);
+  const cut = c.toISOString(), list = db.tickets.filter(t => t.status === "erledigt" && doneAt(t) < cut);
+  if (!list.length) { alert("Es gibt keine erledigten Tickets, die älter als ein Jahr sind."); return; }
+  if (!confirm(list.length + " erledigte Tickets (älter als 1 Jahr) werden als Datei gespeichert und danach hier und in allen synchronisierten Apps entfernt.\n\nDie gespeicherte Datei ist dann die einzige Kopie – bitte gut aufbewahren. Mit „Backup importieren“ lassen sie sich jederzeit zurückholen.\n\nJetzt archivieren?")) return;
+  saveBlob(new Blob([JSON.stringify({format: "PetersBetriebshandbuch", tickets: list}, null, 2)], {type: "application/json"}), "archiv-tickets-bis-" + c.toLocaleDateString("sv-SE") + ".json");
+  const ids = new Set(list.map(t => t.id));
+  list.forEach(t => t.files.forEach(f => fdel(f.id)));
+  db.tickets = db.tickets.filter(t => !ids.has(t.id));
+  save(); S.sel = null; S.edit = false; renderAll(true); $("sys").style.display = "none";
+  alert(list.length + " Tickets archiviert. Die Datei liegt in deinem Download-Ordner.");
 }
 function importFromTicketsystem() {
   let d = null;
