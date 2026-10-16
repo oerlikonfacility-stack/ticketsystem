@@ -93,19 +93,19 @@ label{font-weight:600;font-size:14px}
     <button class="sec" id="roomBtn" onclick="openRooms()" style="margin:0;padding:12px 6px;font-size:15px">🚪 Besprechungsräume</button>
     <button class="sec" id="schBtn" onclick="openSchul()" style="margin:0;padding:12px 6px;font-size:15px">🎓 Schulungstermine</button>
   </div>
+  <button class="sec" id="planBtn" onclick="openPlan()" style="width:100%;margin:0 0 10px;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
+  <div class="two" style="margin-bottom:10px">
+    <button class="sec" id="syncBtn" onclick="openSync()" style="margin:0;padding:12px 6px;font-size:15px">☁️ Sync: aus</button>
+    <button class="sec" onclick="openSys()" style="margin:0;padding:12px 6px;font-size:15px">⚙️ System</button>
+  </div>
   <div class="filters">
     <select id="fStatus" aria-label="Status"></select>
     <select id="fWerk" aria-label="Werk"></select>
     <select id="fPrio" aria-label="Priorität"></select>
   </div>
-  <div class="three" style="margin-bottom:10px">
-    <button class="sec" id="planBtn" onclick="openPlan()">🔁 Wartung</button>
-    <button class="sec" id="syncBtn" onclick="openSync()">☁️ Sync</button>
-    <button class="sec" onclick="openSys()">⚙️ System</button>
-  </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16e (kompakte Buttons)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16f (Button-Anordnung)</small></p>
 </main>
 
 
@@ -304,7 +304,7 @@ function render() {
 
   {
     const lim = leadLimit(), dueN = db.tickets.filter(t => hid(t) && (!t.due || t.due <= lim)).length;
-    $("planBtn").textContent = "🔁 Wartung (" + db.plans.length + ")" + (dueN ? " ⚠️" + dueN : "");
+    $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")" + (dueN ? " · ⚠️ " + dueN + " fällig" : "");
   }
   $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
   $("list").innerHTML = list.map(t => {
@@ -860,7 +860,7 @@ const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h <
 const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]));
 
 function setState(txt) {
-  $("syncBtn").textContent = "☁️ " + (!cfg || txt === "aus" ? "Sync" : /^(Fehler|nicht)/.test(txt) ? "Sync ⚠️" : /offline/.test(txt) ? "Sync ⏸" : "Sync ✓");
+  $("syncBtn").textContent = "☁️ Sync: " + txt;
   $("syncInfo").textContent = cfg ? "Status: " + txt : "Noch nicht eingerichtet. Siehe Anleitung.";
 }
 
