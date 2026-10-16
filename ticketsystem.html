@@ -106,7 +106,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16c (breiter am PC)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16d (Wartungen unter der Haube)</small></p>
 </main>
 
 
@@ -268,12 +268,9 @@ const ft = t => new Date(t).toLocaleString("de-DE", {day:"2-digit", month:"2-dig
 const today = () => new Date().toLocaleDateString("sv-SE");
 const PLAN_LEAD_DAYS = 7;   // Wartungs-Tickets erscheinen vorne erst so viele Tage vor dem Fälligkeitstermin
 const planTicket = t => t.from === "Wartungsplan" || !!t.plan;
-function hid(t) {
-  if (!planTicket(t) || t.status !== "offen" || !t.due) return false;
-  const lim = new Date();
-  lim.setDate(lim.getDate() + PLAN_LEAD_DAYS);
-  return t.due > lim.toLocaleDateString("sv-SE");
-}
+const leadLimit = () => { const l = new Date(); l.setDate(l.getDate() + PLAN_LEAD_DAYS); return l.toLocaleDateString("sv-SE"); };
+/* Wartungs-Tickets liegen "unter der Haube" von Aktive Wartungspläne – nur erledigte erscheinen im Erledigt-Archiv */
+function hid(t) { return planTicket(t) && t.status !== "erledigt"; }
 const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
 function setView(v) { $("fStatus").value = v; render(); }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -314,7 +311,10 @@ function render() {
   $("senders").innerHTML = senders.map(s => `<option value="${esc(s)}">`).join("");
 
   renderEval();
-  $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")";
+  {
+    const lim = leadLimit(), dueN = db.tickets.filter(t => hid(t) && (!t.due || t.due <= lim)).length;
+    $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")" + (dueN ? " · ⚠️ " + dueN + " fällig" : "");
+  }
   $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
@@ -378,6 +378,7 @@ function openSheet(id) {
 function closeSheet() {
   newFl.forEach(id => fdel(id)); newFl = []; goneFl = [];
   $("sheet").style.display = "none";
+  if (fromPlan) { fromPlan = false; renderPlan(); openPlan(); }
 }
 
 function saveTicket() {
@@ -588,10 +589,14 @@ function runPlans() {
   return made;
 }
 function hiddenHtml() {
-  const list = db.tickets.filter(hid).sort((a, b) => a.due.localeCompare(b.due));
-  if (!list.length) return "";
-  return `<h3>Vorgemerkte Wartungen (noch nicht fällig)</h3>` + list.map(t =>
-    `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">#${t.no} ${esc(t.title)}</b><br><small class="meta">Werk ${t.werk} · fällig ${fd(t.due)}</small></span><button class="sec" style="margin:0" onclick="$('plan').style.display='none';openSheet('${t.id}')">Öffnen</button></div>`).join("");
+  const lim = leadLimit();
+  const all = db.tickets.filter(hid).sort((a, b) => String(a.due || "").localeCompare(String(b.due || "")));
+  const row = t => `<div class="pi" style="cursor:default;display:block"><div><b style="padding:0;color:inherit">#${t.no} ${esc(t.title)}</b><br><small class="meta">Werk ${t.werk} · ${t.due && t.due < today() ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}</small></div>
+    <div class="act" style="margin-top:6px"><select onchange="setStatus('${t.id}', this.value);renderPlan()" aria-label="Status ändern">${opts(ST).replace(`value="${t.status}"`, `value="${t.status}" selected`)}</select>
+    <button class="sec" onclick="fromPlan=true;$('plan').style.display='none';openSheet('${t.id}')">Öffnen</button></div></div>`;
+  const due = all.filter(t => !t.due || t.due <= lim), later = all.filter(t => t.due && t.due > lim);
+  return `<h3>Fällige Wartungen (${due.length})</h3>` + (due.map(row).join("") || `<p class="meta">Aktuell ist nichts fällig.</p>`) +
+    (later.length ? `<h3>Vorgemerkt – noch nicht fällig (${later.length})</h3>` + later.map(row).join("") : "");
 }
 function renderPlan() {
   $("planList").innerHTML = (db.plans.map((p, i) =>
@@ -600,6 +605,7 @@ function renderPlan() {
 }
 function openEval() { renderEval(); $("ev").style.display = "block"; $("ev").scrollTop = 0; }
 function openSys() { $("sys").style.display = "block"; $("sys").scrollTop = 0; }
+let fromPlan = false;
 function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
 function addPlan() {
   const title = $("p_title").value.trim();
