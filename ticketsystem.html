@@ -45,8 +45,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#plan,#rooms,#schul,#syncs,#sys,#ev{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#plan .in,#rooms .in,#schul .in,#syncs .in,#sys .in,#ev .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#plan,#rooms,#schul,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#plan .in,#rooms .in,#schul .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -65,6 +65,8 @@ summary{cursor:pointer;font-weight:600}
 .seg button{flex:1;margin:0;background:var(--sec);color:var(--tx)}
 .seg button.on{background:var(--pr);color:#fff}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.three button{margin:0;padding:12px 4px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
 label{font-weight:600;font-size:14px}
 .foot{display:flex;flex-wrap:wrap;margin-top:18px}
@@ -96,17 +98,14 @@ label{font-weight:600;font-size:14px}
     <select id="fWerk" aria-label="Werk"></select>
     <select id="fPrio" aria-label="Priorität"></select>
   </div>
-  <div class="two" style="margin-bottom:6px">
-    <button class="sec" onclick="openEval()" style="margin:0;padding:12px 6px;font-size:15px">📊 Auswertung nach Werk</button>
-    <button class="sec" id="planBtn" onclick="openPlan()" style="margin:0;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
-  </div>
-  <div class="two" style="margin-bottom:10px">
-    <button class="sec" id="syncBtn" onclick="openSync()" style="margin:0;padding:12px 6px;font-size:15px">☁️ Sync: aus</button>
-    <button class="sec" onclick="openSys()" style="margin:0;padding:12px 6px;font-size:15px">⚙️ System</button>
+  <div class="three" style="margin-bottom:10px">
+    <button class="sec" id="planBtn" onclick="openPlan()">🔁 Wartung</button>
+    <button class="sec" id="syncBtn" onclick="openSync()">☁️ Sync</button>
+    <button class="sec" onclick="openSys()">⚙️ System</button>
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16d (Wartungen unter der Haube)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16e (kompakte Buttons)</small></p>
 </main>
 
 
@@ -224,13 +223,6 @@ label{font-weight:600;font-size:14px}
   <button class="sec" onclick="$('sys').style.display='none'" style="width:100%;margin:14px 0 0">Schließen</button>
 </div></div>
 
-<div id="ev"><div class="in">
-  <h2>📊 Auswertung nach Werk</h2>
-  <p class="meta">Aktive Tickets pro Werk. „Teil“ = Status Teil bestellt.</p>
-  <div id="evalBody"></div>
-  <button class="sec" onclick="$('ev').style.display='none'" style="width:100%;margin:14px 0 0">Schließen</button>
-</div></div>
-
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -310,10 +302,9 @@ function render() {
   const senders = [...new Set(db.tickets.map(t => t.from).filter(Boolean))].sort();
   $("senders").innerHTML = senders.map(s => `<option value="${esc(s)}">`).join("");
 
-  renderEval();
   {
     const lim = leadLimit(), dueN = db.tickets.filter(t => hid(t) && (!t.due || t.due <= lim)).length;
-    $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")" + (dueN ? " · ⚠️ " + dueN + " fällig" : "");
+    $("planBtn").textContent = "🔁 Wartung (" + db.plans.length + ")" + (dueN ? " ⚠️" + dueN : "");
   }
   $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
   $("list").innerHTML = list.map(t => {
@@ -549,15 +540,6 @@ function showImg(src) { $("lbi").src = src; $("lb").style.display = "flex"; }
 
 /* ---------- Auswertung, Wartungsplan ---------- */
 
-function renderEval() {
-  let h = `<table class="ev"><tr><th>Werk</th><th>Aktiv</th><th>Dringend</th><th>Teil</th><th>Erledigt</th></tr>`;
-  for (let w = 1; w <= 5; w++) {
-    const a = db.tickets.filter(t => t.werk === String(w));
-    const act = a.filter(t => t.status !== "erledigt" && !hid(t));
-    h += `<tr><td>Werk ${w}</td><td>${act.length}</td><td>${act.filter(t => t.prio === "dringend").length}</td><td>${act.filter(t => t.status === "teil").length}</td><td>${a.filter(t => t.status === "erledigt").length}</td></tr>`;
-  }
-  $("evalBody").innerHTML = h + "</table>";
-}
 
 const INT = {d7: "Wöchentlich", d14: "Alle 2 Wochen", m1: "Monatlich", m3: "Vierteljährlich", m6: "Halbjährlich", m12: "Jährlich"};
 $("p_int").innerHTML = opts(INT);
@@ -603,7 +585,6 @@ function renderPlan() {
     `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(p.title)}</b><br><small class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</small></span><b onclick="delPlan(${i})">✕</b></div>`).join("")
     || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`) + hiddenHtml();
 }
-function openEval() { renderEval(); $("ev").style.display = "block"; $("ev").scrollTop = 0; }
 function openSys() { $("sys").style.display = "block"; $("sys").scrollTop = 0; }
 let fromPlan = false;
 function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
@@ -879,7 +860,7 @@ const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h <
 const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]));
 
 function setState(txt) {
-  $("syncBtn").textContent = "☁️ Sync: " + txt;
+  $("syncBtn").textContent = "☁️ " + (!cfg || txt === "aus" ? "Sync" : /^(Fehler|nicht)/.test(txt) ? "Sync ⚠️" : /offline/.test(txt) ? "Sync ⏸" : "Sync ✓");
   $("syncInfo").textContent = cfg ? "Status: " + txt : "Noch nicht eingerichtet. Siehe Anleitung.";
 }
 
