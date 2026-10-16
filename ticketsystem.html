@@ -52,6 +52,7 @@ button.del{background:#c0392b}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
 .th{position:relative}.th img{width:84px;height:84px;object-fit:cover;border-radius:10px;display:block}
 .th b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px}
+.meta a{color:var(--pr);font-weight:600}
 .fchip{display:inline-block;background:var(--sec);border-radius:99px;padding:4px 10px;margin:4px 6px 0 0;font-size:13px}.fchip a{color:var(--tx);text-decoration:none}.fchip b{cursor:pointer;margin-left:6px}
 .frow{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px}.frow .nm{flex:1;min-width:0;overflow-wrap:anywhere}.frow button{margin:0;padding:6px 10px}
 img.mini{width:56px;height:56px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;cursor:pointer}
@@ -103,7 +104,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16j (Entsorger)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16k (Entsorger mit Mail-Link)</small></p>
 </main>
 
 
@@ -741,13 +742,22 @@ setTimeout(() => { checkSchul(); renderSchul(); }, 1500);
 /* ---------- Entsorger ---------- */
 
 const ENT_F = ["f", "m", "r", "w", "k", "n"];
+/* E-Mail-Adressen -> mailto, Telefonnummern -> tel (Text wird vorher escaped) */
+function linkify(v) {
+  return esc(v)
+    .replace(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, m => `<a href="mailto:${m}">${m}</a>`)
+    .replace(/(^|[\s:(,;])((?:\+|00)?\d[\d ()\/\-]{6,}\d)/g, (all, pre, num) => {
+      const d = num.replace(/[^\d+]/g, "");
+      return d.replace(/\D/g, "").length >= 6 ? `${pre}<a href="tel:${d}">${num}</a>` : all;
+    });
+}
 function renderEnt() {
   const q = $("e_q").value.trim().toLowerCase();
   const list = db.ent.slice().sort((a, b) => a.f.localeCompare(b.f, "de")).filter(x => !q || ENT_F.some(k => String(x[k] || "").toLowerCase().includes(q)));
-  const line = (ic, v) => v ? `<div class="meta" style="white-space:pre-wrap">${ic} ${esc(v)}</div>` : "";
+  const line = (ic, v, lk) => v ? `<div class="meta" style="white-space:pre-wrap">${ic} ${lk ? linkify(v) : esc(v)}</div>` : "";
   $("entList").innerHTML = list.map(x =>
     `<div class="card" style="margin-top:8px"><div class="top"><div class="title">${esc(x.f)}</div><span style="white-space:nowrap"><b onclick="editEnt('${x.id}')" aria-label="Bearbeiten">✏️</b> <b onclick="delEnt('${x.id}')" aria-label="Löschen">✕</b></span></div>
-      ${line("🗑️", x.m)}${line("🔄", x.r)}${line("📍", x.w)}${line("📞", x.k)}${line("📝", x.n)}</div>`).join("")
+      ${line("🗑️", x.m)}${line("🔄", x.r)}${line("📍", x.w)}${line("📞", x.k, 1)}${line("📝", x.n, 1)}</div>`).join("")
     || `<p class="meta">${db.ent.length ? "Nichts gefunden." : "Noch keine Entsorger eingetragen."}</p>`;
   $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
 }
