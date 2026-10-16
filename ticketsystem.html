@@ -80,8 +80,7 @@ label{font-weight:600;font-size:14px}
     <input id="selfFile" type="file" accept="image/*" hidden>
     <div>
       <h1>🛠️ Peters Ticketsystem</h1>
-      <small>Haustechnik · Werk 1–5</small><br>
-      <button class="lnk" id="selfChg" onclick="$('selfFile').click()">Bild hinzufügen</button><button class="lnk" id="selfRm" onclick="rmSelf()" hidden>entfernen</button>
+      <button class="lnk" id="selfChg" onclick="$('selfFile').click()">Bild hinzufügen</button><button class="lnk" id="selfRm" onclick="rmSelf()" hidden>entfernen</button><button class="lnk" id="syncBtn" onclick="openSync()">☁️ Sync: aus</button><button class="lnk" onclick="openSys()">⚙️ System</button>
     </div>
   </div>
   <div class="stats" id="stats"></div>
@@ -94,10 +93,6 @@ label{font-weight:600;font-size:14px}
     <button class="sec" id="schBtn" onclick="openSchul()" style="margin:0;padding:12px 6px;font-size:15px">🎓 Schulungstermine</button>
   </div>
   <button class="sec" id="planBtn" onclick="openPlan()" style="width:100%;margin:0 0 10px;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
-  <div class="two" style="margin-bottom:10px">
-    <button class="sec" id="syncBtn" onclick="openSync()" style="margin:0;padding:12px 6px;font-size:15px">☁️ Sync: aus</button>
-    <button class="sec" onclick="openSys()" style="margin:0;padding:12px 6px;font-size:15px">⚙️ System</button>
-  </div>
   <div class="filters">
     <select id="fStatus" aria-label="Status"></select>
     <select id="fWerk" aria-label="Werk"></select>
@@ -105,7 +100,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16f (Button-Anordnung)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16i</small></p>
 </main>
 
 
