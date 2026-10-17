@@ -202,7 +202,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17f (Matuszak Hygiene statt Prüflisten)";
+const VERSION = "2026-10-17g (Matuszak Hygiene statt Prüflisten)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -1109,7 +1109,7 @@ function renderHome() {
   $("dp").innerHTML = `<div class="dh"><h2>🏠 Übersicht</h2></div>
   <div class="toprow">
   ${ro.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
-  ${bo.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🐀 Aktive Befälle – Matuszak Hygiene (${bo.length})</h3>${bo.map(x => li(`Werk ${esc(x.w)} – ${esc(bfTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "behandlung" ? "bearbeitung" : "offen"}">${BF_ST[x.st] || "Aktiver Befall"}</span>`, `openAny('hygiene','${x.id}')`)).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>` : `<div class="card"><h3 style="margin:0">🐀 Befall Matuszak Hygiene: <span style="color:var(--ok)">kein aktiver Befall ✅</span></h3><div class="meta" style="margin-bottom:0">Letzte Wartung: ${lw ? fd(lw) : "noch nicht eingetragen"}</div></div>`}
+  ${bo.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🐀 Matuszak Hygiene: aktiver Befall (${bo.length})</h3>${bo.map(x => li(`Werk ${esc(x.w)} – ${esc(bfTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "behandlung" ? "bearbeitung" : "offen"}">${BF_ST[x.st] || "Aktiver Befall"}</span>`, `openAny('hygiene','${x.id}')`)).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>` : `<div class="card"><h3 style="margin:0">🐀 Matuszak Hygiene: <span style="color:var(--ok)">kein aktiver Befall ✅</span></h3><div class="meta" style="margin-bottom:0">Letzte Wartung: ${lw ? fd(lw) : "noch nicht eingetragen"}</div></div>`}
   </div>
   <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(bo.length, "aktive Befälle", "hygiene", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
   <div class="cards">
