@@ -48,6 +48,7 @@ h3{margin:18px 0 6px;font-size:15px}
 #nav button:hover{background:var(--sec)}
 #nav button.on{background:var(--pr);color:#fff;font-weight:700}
 #nav button .n{margin-left:auto;font-size:12px;opacity:.75}
+#nav button .w.red{background:var(--bad);font-size:15px;font-weight:700;padding:0 8px}
 #nav button .w{margin-left:auto;font-size:12px;background:var(--warn);color:#fff;border-radius:99px;padding:1px 8px}
 #lp{overflow:auto;border-right:1px solid var(--bd);padding:12px}
 #dp{overflow:auto;padding:18px 24px 60px}
@@ -202,7 +203,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17m (Einkauf-Signal)";
+const VERSION = "2026-10-17n (Einkauf: roter Haken im Menü)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -604,8 +605,9 @@ function count(mod) {
 }
 function renderNav() {
   const warn = {plans: dueWartung().length, hygiene: db.befall.filter(bfOpen).length, reinig: db.reklam.filter(rkOpen).length};
+  const ekOn = ekActive();
   $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
-    `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
+    `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${m === "einkauf" ? (ekOn ? `<span class="w red">✔</span>` : "") : warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
   $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig" || S.mod === "hygiene" || S.mod === "einkauf");
 }
 
@@ -894,7 +896,7 @@ function renderEinkauf() {
     </div>
     <label for="ek_t">Notizen</label>
     <textarea id="ek_t" rows="18" style="width:100%;min-height:40vh;font-size:16px;line-height:1.5" placeholder="z. B. 17.10. Leuchtmittel LED 20 Stück, Firma XY, 48 €">${esc(e.t || "")}</textarea>
-    <div class="bar"><button onclick="ekSave()">💾 Speichern</button><button class="sec" onclick="renderEinkauf()">↩ Zurücksetzen</button></div>`;
+    <div class="bar"><button onclick="ekSave()">💾 Speichern</button>${e.ak ? `<button class="sec" onclick="ekDone()">✅ Einkauf erledigt</button>` : ""}<button class="sec" onclick="renderEinkauf()">↩ Zurücksetzen</button></div>`;
 }
 const ekActive = () => { const e = eObj(); return !!(e && e.ak); };
 function ekCard() {
@@ -912,7 +914,7 @@ function ekSave() {
   const snap = JSON.stringify(db);
   if (old) db.einkauf[db.einkauf.indexOf(old)] = r; else db.einkauf.push(r);
   if (!save()) { db = JSON.parse(snap); return; }
-  toast("Gespeichert ✓"); renderEinkauf();
+  toast("Gespeichert ✓"); renderEinkauf(); renderNav();
 }
 
 /* ---------- Unterhaltsreinigung ---------- */
@@ -1153,7 +1155,6 @@ function renderHome() {
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
   ${card("🎓 Nächste Schulungen", sc.slice(0, 6).map(x => li(esc(x.t), esc([fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a].filter(Boolean).join(" · ")), `openAny('schul','${x.id}')`)).join("") || `<div class="meta">Keine Termine eingetragen.</div>`)}
-  ${ekActive() ? ekCard() : ""}
   </div>`;
 }
 
