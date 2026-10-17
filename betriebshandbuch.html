@@ -205,7 +205,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17p (Mail über Outlook Web)";
+const VERSION = "2026-10-17r (Angebote, Kachel)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -253,9 +253,9 @@ const PLAN_LEAD_DAYS = 7;
 const K_TICKET = ["title","werk","prio","status","from","mail","due","desc","notes"];
 
 /* ---------- Daten ---------- */
-const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], reinig:[], reklam:[], hygiene:[], befall:[], einkauf:[]});
+const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], reinig:[], reklam:[], hygiene:[], befall:[], einkauf:[], angebote:[]});
 const LISTS = Object.keys(emptyDb()).filter(k => k !== "next");
-const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", u:"reinig", x:"reklam", h:"hygiene", b:"befall", i:"einkauf"};
+const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", u:"reinig", x:"reklam", h:"hygiene", b:"befall", i:"einkauf", o:"angebote"};
 const SHARED = new Set(["t","p","r","s","e"]);     // liegen im selben Firebase-Ordner wie das Ticketsystem
 const kindOf = list => Object.keys(KIND).find(k => KIND[k] === list);
 let db = emptyDb();
@@ -565,6 +565,15 @@ function runPlans() {
 const dueWartung = () => { const l = leadLimit(); return db.tickets.filter(t => hid(t) && (!t.due || t.due <= l)); };
 
 /* ---------- Bereiche (Definitionen) ---------- */
+const AST = {angefordert:"Angebot angefordert", vorhanden:"Angebot liegt vor", pruefung:"Beim Entscheider zur Prüfung", genehmigt:"Genehmigt / beauftragt", abgelehnt:"Abgelehnt"};
+const angOpen = x => x.st !== "genehmigt" && x.st !== "abgelehnt";
+const angTitle = x => { const g = String(x.g || "").split("\n")[0]; return (x.f || "–") + (g ? " – " + (g.length > 60 ? g.slice(0, 60) + "…" : g) : ""); };
+function angSet(id, st, dfield) {
+  const x = db.angebote.find(y => y.id === id); if (!x) return;
+  const snap = JSON.stringify(db); x.st = st; if (dfield) x[dfield] = today();
+  if (!save()) { db = JSON.parse(snap); return; }
+  toast("Gespeichert ✓"); renderAll(true);
+}
 const ART = ["Wasser", "Gas", "Strom", "Heizung", "Druckluft", "Lüftung", "Sonstiges"];
 const MODS = {
   home:    {ic:"🏠", t:"Übersicht"},
@@ -595,16 +604,24 @@ const MODS = {
   ent: {ic:"♻️", t:"Entsorger", one:"Entsorger",
     fields:[{k:"f",l:"Firma",req:1,w:1},{k:"m",l:"Was wird abgeholt? (Materialien)",type:"area",w:1,rows:3},{k:"r",l:"Rhythmus",ph:"z. B. jeden 2. Dienstag"},{k:"w",l:"Werk / Abholort"},{k:"k",l:"Kontakt (Ansprechpartner, Telefon, E-Mail)",type:"area",w:1,rows:2,lk:1},{k:"n",l:"Notizen (Kundennummer, Vertrag …)",type:"area",w:1,rows:3,lk:1}],
     title:x => x.f, sub:x => [x.m, x.r]},
+  angebote: {ic:"📨", t:"Angebote", one:"Angebot",
+    fields:[{k:"f",l:"Firma (Angebot angefordert bei)",req:1,w:1},{k:"g",l:"Dienstleistung / Gegenstand",type:"area",w:1,rows:3,req:1,ph:"Worum geht es?"},{k:"w",l:"Werk",type:"werk"},{k:"st",l:"Status",type:"sel",opts:AST},{k:"da",l:"Angefordert am",type:"date"},{k:"dl",l:"Angebot erhalten am",type:"date"},{k:"ds",l:"Zur Prüfung gesendet am",type:"date"},{k:"en",l:"Gesendet an (Entscheider)"},{k:"k",l:"Kontakt (Ansprechpartner, Telefon, E-Mail)",type:"area",w:1,rows:2,lk:1},{k:"o",l:"Notizen (Betrag, Rückfragen …)",type:"area",w:1,rows:3,lk:1}],
+    get defaults() { return {st:"angefordert", da: today()}; },
+    title:angTitle,
+    sub:x => [AST[x.st] || "", x.w ? "Werk " + x.w : "", x.da ? "angefordert " + fd(x.da) : ""],
+    sort:(a, b) => String(b.da || "").localeCompare(String(a.da || "")),
+    groups:arr => [["Aktiv", arr.filter(angOpen)], ["Abgeschlossen", arr.filter(x => !angOpen(x))]],
+    view:x => `<div class="bar">${x.st === "angefordert" ? `<button onclick="angSet('${x.id}','vorhanden','dl')">📥 Angebot ist da</button>` : ""}${x.st === "vorhanden" ? `<button onclick="angSet('${x.id}','pruefung','ds')">📤 Zur Prüfung an Entscheider gesendet</button>` : ""}${x.st === "pruefung" ? `<button onclick="angSet('${x.id}','genehmigt')">✅ Genehmigt / beauftragt</button><button class="sec" onclick="angSet('${x.id}','abgelehnt')">❌ Abgelehnt</button>` : ""}${!angOpen(x) ? `<button class="sec" onclick="angSet('${x.id}','angefordert')">↩ Wieder aktiv setzen</button>` : ""}</div>`},
   rooms: {ic:"🚪", t:"Besprechungsräume", one:"Raum", nophoto:1, nodocs:1,
     fields:[{k:"t",l:"Raum (Name, Werk, Etage)",req:1,w:1,ph:"Gonzen, Werk 2, Erdgeschoss"}],
     title:x => x.t, sub:() => ""},
 };
-const GEN = ["schul","absperr","schluessel","firmen","ent","rooms"];
+const GEN = ["angebote","schul","absperr","schluessel","firmen","ent","rooms"];
 const NAV = [
   ["", ["home"]],
   ["Aufträge", ["tickets","plans","schul"]],
   ["Anlagen & Wissen", ["schluessel","firmen","ent","rooms","absperr"]],
-  ["Einkauf", ["einkauf"]],
+  ["Einkauf", ["einkauf","angebote"]],
   ["Reinigung & Hygiene", ["reinig","hygiene"]]
 ];
 
@@ -617,12 +634,13 @@ function count(mod) {
   if (mod === "tickets") return db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length;
   if (mod === "plans") return db.plans.length;
   if (mod === "reinig" || mod === "hygiene" || mod === "einkauf") return "";
+  if (mod === "angebote") return db.angebote.filter(angOpen).length;
   if (db[mod]) return db[mod].length;
   return "";
 }
 function renderNav() {
   const warn = {plans: dueWartung().length, hygiene: db.befall.filter(bfOpen).length, reinig: db.reklam.filter(rkOpen).length};
-  const ekOn = ekActive();
+  const ekOn = ekActive(); warn.angebote = db.angebote.filter(angOpen).length;
   $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
     `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${m === "einkauf" ? (ekOn ? `<span class="w red">✔</span>` : "") : warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
   $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig" || S.mod === "hygiene" || S.mod === "einkauf");
@@ -673,6 +691,7 @@ function renderDetail() {
 function fieldVal(f, v) {
   if (f.type === "date") return esc(fd(v));
   if (f.type === "werk") return "Werk " + esc(v);
+  if (f.type === "sel" && f.opts && !Array.isArray(f.opts)) return esc(f.opts[v] || v);
   return f.lk ? linkify(v) : esc(v);
 }
 function viewItem(m, x) {
@@ -1167,7 +1186,7 @@ function renderHome() {
   ${ro.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
   ${bo.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🐀 Matuszak Hygiene: aktiver Befall (${bo.length})</h3>${bo.map(x => li(`Werk ${esc(x.w)} – ${esc(bfTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "behandlung" ? "bearbeitung" : "offen"}">${BF_ST[x.st] || "Aktiver Befall"}</span>`, `openAny('hygiene','${x.id}')`)).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>` : `<div class="card"><h3 style="margin:0">🐀 Matuszak Hygiene: <span style="color:var(--ok)">kein aktiver Befall ✅</span></h3><div class="meta" style="margin-bottom:0">Letzte Wartung: ${lw ? fd(lw) : "noch nicht eingetragen"}</div></div>`}
   </div>
-  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(bo.length, "aktive Befälle", "hygiene", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
+  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(bo.length, "aktive Befälle", "hygiene", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}${kpi(db.angebote.filter(angOpen).length, "aktive Angebote", "angebote")}</div>
   <div class="cards">
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
