@@ -111,7 +111,7 @@ button.tile{position:relative;background:var(--card);color:var(--tx);border:1px 
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17f (Einkauf erledigt)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17g (Mett 1 bis 6 kg)</small></p>
 </main>
 
 
@@ -725,11 +725,11 @@ const sObj = () => db.einkauf.find(x => x.id === "einkauf");
 function shopSummary(e) { return [e && e.fw ? e.fw + "× Fleischwurst" : "", e && e.mt ? e.mt + " kg Mett" : ""].filter(Boolean).join(", "); }
 function renderShop() {
   const e = sObj() || {};
-  const sel = (id, arr, v, u) => `<select id="${id}"><option value="">–</option>${arr.map(n => `<option value="${n}"${String(v) === String(n) ? " selected" : ""}>${n} ${u}</option>`).join("")}</select>`;
+  const sel = (id, arr, v, u) => `<select id="${id}"><option value="">–</option>${arr.map(n => `<option value="${n}"${String(v) === String(n) ? " selected" : ""}>${String(n).replace(".", ",")} ${u}</option>`).join("")}</select>`;
   $("shBody").innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:12px 14px;background:var(--card);border:2px solid var(--pr);border-radius:12px;font-weight:700;cursor:pointer"><input type="checkbox" id="sh_ak" style="width:22px;height:22px;margin:0"${e.ak ? " checked" : ""}> 🔔 Einkauf aktiv – es muss eingekauft werden</label>
     <div class="card" style="margin:12px 0">
       <label for="sh_fw">🌭 Fleischwurst (Stück)</label>${sel("sh_fw", [1, 2, 3, 4, 5, 6], e.fw, "Stück")}
-      <label for="sh_mt" style="margin-top:10px;display:block">🥩 Mett (Kilo)</label>${sel("sh_mt", [1, 2, 3, 4], e.mt, "kg")}
+      <label for="sh_mt" style="margin-top:10px;display:block">🥩 Mett (Kilo)</label>${sel("sh_mt", [1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6], e.mt, "kg")}
     </div>
     <label for="sh_t">Notizen</label>
     <textarea id="sh_t" rows="10" placeholder="z. B. Brötchen, Senf, Leuchtmittel …">${esc(e.t || "")}</textarea>
