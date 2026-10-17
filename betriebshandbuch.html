@@ -101,6 +101,14 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
 #lb img{max-width:96%;max-height:96%}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#182431;color:#fff;padding:10px 18px;border-radius:99px;z-index:60;display:none}
 .empty{color:var(--mu);padding:30px 10px;text-align:center}
+#lock{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;align-items:center;justify-content:center;padding:16px}
+#lock .lbox{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:26px 24px;width:min(360px,100%);text-align:center}
+#lock h2{margin:0 0 6px}
+#lock input{width:100%;box-sizing:border-box;text-align:center;font-size:20px;letter-spacing:4px;margin:12px 0 8px}
+#lock button.go{width:100%}
+#lock .err{color:var(--bad);min-height:20px;font-size:14px;margin:4px 0}
+#lock a{color:var(--mu);font-size:13px;cursor:pointer;text-decoration:underline}
+body.locked #top,body.locked #app{visibility:hidden}
 @media(max-width:1000px){
  body{overflow:auto}
  #app,#app.full{display:block;height:auto}
@@ -119,6 +127,7 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
   <h1>📘 Peters Betriebshandbuch</h1>
   <div id="gqw"><input id="gq" type="search" placeholder="🔎 Alles durchsuchen (Tickets, Geräte, Firmen, Schlüssel …)  –  Taste /" autocomplete="off"><div id="gres"></div></div>
   <span id="spacer"></span>
+  <button class="tl" id="lockTop" onclick="lockNow()" style="display:none">🔒 Sperren</button>
   <button class="tl" id="syncBtn" onclick="openSync()">☁️ Sync: aus</button>
   <button class="tl" onclick="openSys()">⚙️ System</button>
 </div>
@@ -151,9 +160,33 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
   <input id="file" type="file" accept=".json" hidden onchange="importFile(event)">
   <button class="sec" onclick="importFromTicketsystem()" style="width:100%;margin:4px 0">Daten aus dem Ticketsystem übernehmen (gleicher Browser)</button>
   <button class="sec" onclick="if(confirm('Beim nächsten Start alle Daten komplett vom Server laden?')){resetSince();location.reload()}" style="width:100%;margin:4px 0">Sync komplett neu laden</button>
+  <button class="sec" onclick="openPin()" style="width:100%;margin:4px 0">🔒 PIN-Sperre einrichten / ändern / ausschalten</button>
   <button class="sec" onclick="archiveOld()" style="width:100%;margin:4px 0">Alte erledigte Tickets archivieren (älter als 1 Jahr)</button>
   <p class="meta" id="verInfo"></p>
   <button class="sec" onclick="$('sys').style.display='none'" style="width:100%;margin:10px 0 0">Schließen</button>
+</div></div>
+
+<div class="modal" id="pinm"><div class="box">
+  <h2>🔒 PIN-Sperre</h2>
+  <p class="meta" id="pinInfo"></p>
+  <div id="pm_oldw"><label for="pm_old">Aktuelle PIN</label><input id="pm_old" type="password" autocomplete="off"></div>
+  <label for="pm_new">Neue PIN / neues Passwort (mind. 4 Zeichen)</label><input id="pm_new" type="password" autocomplete="off">
+  <label for="pm_new2">Wiederholen</label><input id="pm_new2" type="password" autocomplete="off">
+  <label for="pm_idle">Automatisch sperren nach</label>
+  <select id="pm_idle"><option value="5">5 Minuten Pause</option><option value="10">10 Minuten Pause</option><option value="30">30 Minuten Pause</option><option value="0">Nie (nur beim Öffnen der Seite)</option></select>
+  <p class="meta">Die Sperre gilt nur für diesen Browser auf diesem Gerät. Sie schützt vor neugierigen Blicken, ist aber keine Verschlüsselung der Daten.</p>
+  <button onclick="pinSave()" style="width:100%;margin:4px 0">Speichern</button>
+  <button class="sec" id="pm_off" onclick="pinOff()" style="width:100%;margin:4px 0">PIN-Sperre ausschalten</button>
+  <button class="sec" onclick="$('pinm').style.display='none'" style="width:100%;margin:4px 0 0">Schließen</button>
+</div></div>
+
+<div id="lock"><div class="lbox">
+  <h2>🔒 Betriebshandbuch</h2>
+  <p class="meta" id="lk_msg">Bitte PIN eingeben.</p>
+  <input id="lk_in" type="password" autocomplete="off" aria-label="PIN">
+  <div class="err" id="lk_err"></div>
+  <button class="go" id="lk_go" onclick="tryUnlock()">Entsperren</button>
+  <p style="margin:14px 0 0"><a onclick="pinForgot()">PIN vergessen?</a></p>
 </div></div>
 
 <div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
@@ -162,7 +195,7 @@ table.t th{color:var(--mu);font-size:12px;text-transform:uppercase}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-16b (Sync lädt nur Änderungen, Archivierung)";
+const VERSION = "2026-10-17 (PIN-Sperre)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -923,7 +956,7 @@ $("gq").addEventListener("input", e => globalSearch(e.target.value));
 $("gq").addEventListener("keydown", e => { if (e.key === "Escape") { $("gres").style.display = "none"; e.target.blur(); } });
 document.addEventListener("click", e => { if (!e.target.closest("#gqw")) $("gres").style.display = "none"; });
 document.addEventListener("keydown", e => {
-  if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $("gq").focus(); $("gq").select(); }
+  if (e.key === "/" && !locked && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $("gq").focus(); $("gq").select(); }
 });
 document.querySelectorAll(".modal").forEach(m => m.addEventListener("mousedown", e => { if (e.target === m) m.style.display = "none"; }));
 
@@ -974,12 +1007,108 @@ function importFromTicketsystem() {
   runPlans(); renderAll(true); $("sys").style.display = "none"; alert(n + " Einträge aus dem Ticketsystem übernommen.");
 }
 
+/* ---------- PIN-Sperre ---------- */
+const PK = "petersHandbuchPin", PF = "petersHandbuchPinFail", PWIPE = "petersHandbuchWipe";
+let pinCfg = null, locked = false, lastAct = Date.now(), started = false;
+try { pinCfg = JSON.parse(localStorage.getItem(PK) || "null"); } catch (e) {}
+const b64 = a => btoa(String.fromCharCode(...new Uint8Array(a)));
+const unb64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+const canCrypto = () => !!(window.crypto && crypto.subtle);
+async function pinHash(pin, salt, it) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+  return b64(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt, iterations: it}, k, 256));
+}
+async function pinOk(pin) { return !pinCfg || (await pinHash(pin, unb64(pinCfg.s), pinCfg.it)) === pinCfg.h; }
+function pinUI() { $("lockTop").style.display = pinCfg ? "" : "none"; }
+function getFail() { try { return JSON.parse(localStorage.getItem(PF) || "{}"); } catch (e) { return {}; } }
+function lockNow() {
+  if (!pinCfg || locked) return;
+  locked = true;
+  document.body.classList.add("locked");
+  document.querySelectorAll(".modal").forEach(m => m.style.display = "none");
+  $("lb").style.display = "none"; $("gres").style.display = "none";
+  $("lk_in").value = ""; $("lk_err").textContent = ""; $("lock").style.display = "flex";
+  setTimeout(() => $("lk_in").focus(), 50);
+}
+async function tryUnlock() {
+  if (!canCrypto()) { $("lk_err").textContent = "Dieser Browser kann die PIN hier nicht prüfen (Seite muss über https geöffnet sein)."; return; }
+  const f = getFail(), now = Date.now();
+  if (f.until && f.until > now) { $("lk_err").textContent = "Bitte " + Math.ceil((f.until - now) / 1000) + " Sekunden warten."; return; }
+  const pin = $("lk_in").value;
+  if (!pin) return;
+  let ok = false;
+  try { ok = await pinOk(pin); } catch (e) {}
+  if (ok) {
+    try { localStorage.removeItem(PF); } catch (e) {}
+    locked = false; lastAct = Date.now();
+    document.body.classList.remove("locked"); $("lock").style.display = "none"; $("lk_in").value = "";
+    startApp();
+  } else {
+    const n = (f.n || 0) + 1, wait = n >= 5 ? Math.min(600, 30 * Math.pow(2, n - 5)) : 0;
+    try { localStorage.setItem(PF, JSON.stringify({n, until: wait ? now + wait * 1000 : 0})); } catch (e) {}
+    $("lk_err").textContent = wait ? "Falsche PIN. Bitte " + wait + " Sekunden warten." : "Falsche PIN.";
+    $("lk_in").value = ""; $("lk_in").focus();
+  }
+}
+$("lk_in").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
+["mousemove", "keydown", "click", "touchstart", "scroll"].forEach(ev => document.addEventListener(ev, () => { if (!locked) lastAct = Date.now(); }, {passive: true, capture: true}));
+function idleCheck() { if (pinCfg && pinCfg.idle && !locked && Date.now() - lastAct > pinCfg.idle * 60000) lockNow(); }
+setInterval(idleCheck, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) idleCheck(); });
+
+function openPin() {
+  $("pinInfo").textContent = pinCfg ? "Die PIN-Sperre ist eingeschaltet. Zum Ändern oder Ausschalten bitte die aktuelle PIN eingeben." : "Noch keine PIN festgelegt. Beim Öffnen der Seite wird dann zuerst die PIN abgefragt.";
+  $("pm_oldw").style.display = pinCfg ? "" : "none"; $("pm_off").style.display = pinCfg ? "" : "none";
+  ["pm_old", "pm_new", "pm_new2"].forEach(i => $(i).value = "");
+  $("pm_idle").value = String(pinCfg ? pinCfg.idle : 10);
+  $("pinm").style.display = "flex";
+}
+async function pinSave() {
+  if (!canCrypto()) { alert("Die PIN-Sperre braucht eine sichere Verbindung (https). Bitte die Seite über die GitHub-Pages-Adresse öffnen."); return; }
+  const n1 = $("pm_new").value, n2 = $("pm_new2").value, idle = +$("pm_idle").value;
+  if (pinCfg && !(await pinOk($("pm_old").value))) { alert("Die aktuelle PIN stimmt nicht."); return; }
+  if (!n1 && pinCfg) { pinCfg.idle = idle; }
+  else {
+    if (n1.length < 4) { alert("Die neue PIN braucht mindestens 4 Zeichen."); return; }
+    if (n1 !== n2) { alert("Die beiden Eingaben sind nicht gleich."); return; }
+    const salt = crypto.getRandomValues(new Uint8Array(16)), it = 150000;
+    pinCfg = {s: b64(salt), it, h: await pinHash(n1, salt, it), idle};
+  }
+  try { localStorage.setItem(PK, JSON.stringify(pinCfg)); localStorage.removeItem(PF); } catch (e) { alert("Konnte nicht gespeichert werden: " + e.message); return; }
+  lastAct = Date.now(); pinUI(); $("pinm").style.display = "none"; toast("PIN-Sperre gespeichert");
+}
+async function pinOff() {
+  if (!(await pinOk($("pm_old").value))) { alert("Die aktuelle PIN stimmt nicht."); return; }
+  try { localStorage.removeItem(PK); localStorage.removeItem(PF); } catch (e) {}
+  pinCfg = null; pinUI(); $("pinm").style.display = "none"; toast("PIN-Sperre ausgeschaltet");
+}
+function pinForgot() {
+  const t = prompt("PIN vergessen?\n\nDann gibt es nur den Weg über das Zurücksetzen: Alle Daten des Betriebshandbuchs in DIESEM Browser werden gelöscht und die Anmeldung beim Sync wird beendet (auch im Ticketsystem, du musst dich dort neu anmelden). Danach holst du die Daten über den Sync wieder vom Server.\n\nOhne eingerichteten Sync sind die Daten verloren (außer du hast ein Backup).\n\nZum Bestätigen LÖSCHEN eintippen:");
+  if (t === null) return;
+  if (t.trim().toUpperCase() !== "LÖSCHEN") { alert("Nicht bestätigt, nichts wurde gelöscht."); return; }
+  try { localStorage.setItem(PWIPE, "1"); } catch (e) {}
+  location.reload();
+}
+function delDb(n) { return new Promise(r => { try { const q = indexedDB.deleteDatabase(n); q.onsuccess = q.onerror = q.onblocked = () => r(); } catch (e) { r(); } }); }
+async function wipeLocal() {
+  await Promise.all([delDb("petersHandbuch"), delDb("firebaseLocalStorageDb")]);
+  Object.keys(localStorage).filter(k => k.indexOf("petersHandbuch") === 0).forEach(k => localStorage.removeItem(k));
+  pinCfg = null;
+}
+
 /* ---------- Start ---------- */
-(async function () {
+async function startApp() {
+  if (started) return;
+  started = true;
   await loadDb();
   runPlans();
   renderAll(true);
   initSync();
+}
+(async function () {
+  if (localStorage.getItem(PWIPE)) { await wipeLocal(); }
+  pinUI();
+  if (pinCfg) lockNow(); else startApp();
 })();
 </script>
 </body>
