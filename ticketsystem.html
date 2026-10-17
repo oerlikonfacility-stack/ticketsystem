@@ -71,6 +71,12 @@ summary{cursor:pointer;font-weight:600}
 .hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
 label{font-weight:600;font-size:14px}
 button.sm{padding:8px 12px;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+button.tile{position:relative;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:14px;margin:0;padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tile .ti{font-size:27px;line-height:1.1}.tile .tl{font-size:13px}
+.tb{position:absolute;top:6px;right:7px;min-width:20px;height:20px;border-radius:10px;font-size:12px;line-height:20px;text-align:center;padding:0 5px;font-weight:700}
+.tb:empty{display:none}
+.tb.bad{background:#d64545;color:#fff}.tb.ok{background:rgba(46,158,91,.18);color:#2e9e5b}.tb.cnt{background:var(--sec);color:var(--mu)}
 .foot{display:flex;flex-wrap:wrap;margin-top:18px}
 .foot button{flex:1}
 </style>
@@ -90,11 +96,11 @@ button.sm{padding:8px 12px;font-size:14px}
 
 <main>
   <div class="seg" id="seg"><button data-v="aktiv" onclick="setView('aktiv')">Aktiv</button><button data-v="erledigt" onclick="setView('erledigt')">✅ Erledigt-Archiv</button></div>
-  <div class="two" style="margin-bottom:10px">
-    <button class="sec" id="roomBtn" onclick="openRooms()" style="margin:0;padding:12px 6px;font-size:15px">🚪 Besprechungsräume</button>
-    <button class="sec" id="reBtn" onclick="openReinig()" style="margin:0;padding:12px 6px;font-size:15px">🧽 Unterhaltsreinigung</button>
+  <div class="tiles">
+    <button class="tile" id="roomBtn" onclick="openRooms()"><span class="ti">🚪</span><span class="tl">Räume</span><span class="tb" id="roomBadge"></span></button>
+    <button class="tile" id="reBtn" onclick="openReinig()"><span class="ti">🧽</span><span class="tl">Reinigung</span><span class="tb" id="reBadge"></span></button>
+    <button class="tile" id="hyBtn" onclick="openHyg()"><span class="ti">🐀</span><span class="tl">Hygiene</span><span class="tb" id="hyBadge"></span></button>
   </div>
-  <button class="sec" id="hyBtn" onclick="openHyg()" style="width:100%;margin:0 0 10px;padding:12px 6px;font-size:15px">🐀 Matuszak Hygiene</button>
   <div id="rkNote"></div>
   <div id="hyNote"></div>
   <div class="filters">
@@ -104,7 +110,7 @@ button.sm{padding:8px 12px;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17b (Matuszak Hygiene, Unterhaltsreinigung)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17c (Kacheln für Räume, Reinigung, Hygiene)</small></p>
 </main>
 
 
@@ -287,7 +293,7 @@ function render() {
   const senders = [...new Set(db.tickets.map(t => t.from).filter(Boolean))].sort();
   $("senders").innerHTML = senders.map(s => `<option value="${esc(s)}">`).join("");
 
-  $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
+  setBadge("roomBadge", "cnt", db.rooms.length || "");
   renderReNote();
   renderHyNote();
   $("list").innerHTML = list.map(t => {
@@ -542,7 +548,7 @@ function renderRooms() {
   $("roomList").innerHTML = list.map(r =>
     `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(r.t)}</b></span><b onclick="delRoom('${r.id}')" aria-label="Löschen">✕</b></div>`).join("")
     || `<p class="meta">${db.rooms.length ? "Kein Raum gefunden." : "Noch keine Besprechungsräume eingetragen."}</p>`;
-  $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
+  setBadge("roomBadge", "cnt", db.rooms.length || "");
 }
 function openRooms() { $("r_q").value = ""; renderRooms(); $("rooms").style.display = "block"; $("rooms").scrollTop = 0; }
 function addRoom() {
@@ -574,13 +580,14 @@ const rkOpen = x => x.st !== "erledigt";
 const rkSort = (a, b) => String(b.d || "").localeCompare(String(a.d || ""));
 const rkTitle = x => { const t = String(x.t || "").split("\n")[0]; return t.length > 60 ? t.slice(0, 60) + "…" : t; };
 
+function setBadge(id, cls, txt) { const el = $(id); if (!el) return; el.className = "tb " + cls; el.textContent = txt; }
 /* Meldung auf der Startseite */
 function renderReNote() {
   const ro = db.reklam.filter(rkOpen).sort(rkSort);
-  $("reBtn").textContent = "🧽 Unterhaltsreinigung" + (ro.length ? " (" + ro.length + " offen)" : "");
+  setBadge("reBadge", ro.length ? "bad" : "ok", ro.length ? ro.length : "✓");
   $("rkNote").innerHTML = ro.length
     ? `<div class="card" style="border-left-color:#d64545"><div class="title" style="font-size:16px">🧽 Offene Reklamationen (${ro.length})</div>${ro.map(x => `<div class="pi" onclick="openReinig('${x.id}')"><span><b style="padding:0;color:inherit">Werk ${esc(x.w)} – ${esc(rkTitle(x))}</b><br><small class="meta">${fd(x.d)}${x.von ? " · von " + esc(x.von) : ""} · ${RK_ST[x.st] || "Offen"}</small></span></div>`).join("")}</div>`
-    : `<div class="meta" style="margin:0 0 10px">🧽 Reklamationen Unterhaltsreinigung: <b style="color:#2e9e5b">keine offen ✅</b></div>`;
+    : "";
 }
 function openReinig(focusId) { RS = {re: null, rk: null, focus: focusId || null}; rkPh = []; renderReinig(); $("reinig").style.display = "block"; $("reinig").scrollTop = 0; }
 function closeReinig() { RS.re = null; RS.rk = null; rkPh = []; $("reinig").style.display = "none"; renderReNote(); }
@@ -698,10 +705,10 @@ function hPut(h) { const o = hObj(); if (o) db.hygiene[db.hygiene.indexOf(o)] = 
 /* Meldung auf der Startseite */
 function renderHyNote() {
   const bo = db.befall.filter(bfOpen).sort(bfSort), lw = hLast(hObj());
-  $("hyBtn").textContent = "🐀 Matuszak Hygiene" + (bo.length ? " (" + bo.length + " aktiv)" : "");
+  setBadge("hyBadge", bo.length ? "bad" : "ok", bo.length ? bo.length : "✓");
   $("hyNote").innerHTML = bo.length
     ? `<div class="card" style="border-left-color:#d64545"><div class="title" style="font-size:16px">🐀 Matuszak Hygiene: aktiver Befall (${bo.length})</div>${bo.map(x => `<div class="pi" onclick="openHyg('${x.id}')"><span><b style="padding:0;color:inherit">Werk ${esc(x.w)} – ${esc(bfTitle(x))}</b><br><small class="meta">${fd(x.d)}${x.von ? " · von " + esc(x.von) : ""} · ${BF_ST[x.st] || "Aktiver Befall"}</small></span></div>`).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>`
-    : `<div class="meta" style="margin:0 0 10px">🐀 Matuszak Hygiene: <b style="color:#2e9e5b">kein aktiver Befall ✅</b> · Letzte Wartung: ${lw ? fd(lw) : "noch nicht eingetragen"}</div>`;
+    : "";
 }
 function openHyg(focusId) { HS = {he: false, bf: null, hl: null, focus: focusId || null}; bfPh = []; renderHyg(); $("hyg").style.display = "block"; $("hyg").scrollTop = 0; }
 function closeHyg() { HS.he = false; HS.bf = null; bfPh = []; $("hyg").style.display = "none"; renderHyNote(); }
