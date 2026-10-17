@@ -45,8 +45,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#rooms,#reinig,#hyg,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#rooms .in,#reinig .in,#hyg .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#rooms,#reinig,#hyg,#shop,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#rooms .in,#reinig .in,#hyg .in,#shop .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -71,9 +71,9 @@ summary{cursor:pointer;font-weight:600}
 .hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
 label{font-weight:600;font-size:14px}
 button.sm{padding:8px 12px;font-size:14px}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
-button.tile{position:relative;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:14px;margin:0;padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.tile .ti{font-size:27px;line-height:1.1}.tile .tl{font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:0 0 12px}
+button.tile{position:relative;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:14px;margin:0;padding:11px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.tile .ti{font-size:27px;line-height:1.1}.tile .tl{font-size:12.5px}
 .tb{position:absolute;top:6px;right:7px;min-width:20px;height:20px;border-radius:10px;font-size:12px;line-height:20px;text-align:center;padding:0 5px;font-weight:700}
 .tb:empty{display:none}
 .tb.bad{background:#d64545;color:#fff}.tb.ok{background:rgba(46,158,91,.18);color:#2e9e5b}.tb.cnt{background:var(--sec);color:var(--mu)}
@@ -100,6 +100,7 @@ button.tile{position:relative;background:var(--card);color:var(--tx);border:1px 
     <button class="tile" id="roomBtn" onclick="openRooms()"><span class="ti">🚪</span><span class="tl">Räume</span><span class="tb" id="roomBadge"></span></button>
     <button class="tile" id="reBtn" onclick="openReinig()"><span class="ti">🧽</span><span class="tl">Reinigung</span><span class="tb" id="reBadge"></span></button>
     <button class="tile" id="hyBtn" onclick="openHyg()"><span class="ti">🐀</span><span class="tl">Hygiene</span><span class="tb" id="hyBadge"></span></button>
+    <button class="tile" id="shBtn" onclick="openShop()"><span class="ti">🛒</span><span class="tl">Einkauf</span><span class="tb" id="shBadge"></span></button>
   </div>
   <div id="rkNote"></div>
   <div id="hyNote"></div>
@@ -110,7 +111,7 @@ button.tile{position:relative;background:var(--card);color:var(--tx);border:1px 
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17c (Kacheln für Räume, Reinigung, Hygiene)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17d (Kachel Einkauf)</small></p>
 </main>
 
 
@@ -176,6 +177,12 @@ button.tile{position:relative;background:var(--card);color:var(--tx);border:1px 
   <button class="sec" onclick="closeReinig()">Schließen</button>
 </div></div>
 <input id="rkphfile" type="file" accept="image/*" multiple hidden onchange="addRkPhotos(event)">
+<div id="shop"><div class="in">
+  <h2>🛒 Einkauf</h2>
+  <small class="meta">Fleischwurst, Mett und Notizen</small>
+  <div id="shBody"></div>
+  <button class="sec" onclick="closeShop()">Schließen</button>
+</div></div>
 <div id="hyg"><div class="in">
   <h2>🐀 Matuszak Hygiene</h2>
   <small class="meta">Schädlingsbekämpfung</small>
@@ -217,7 +224,7 @@ const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", a
 const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
 const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
 const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
-let db = {next: 1, tickets: [], plans: [], rooms: [], schul: [], ent: [], reinig: [], reklam: [], hygiene: [], befall: []};
+let db = {next: 1, tickets: [], plans: [], rooms: [], schul: [], ent: [], reinig: [], reklam: [], hygiene: [], befall: [], einkauf: []};
 let editPl = [], editPh = [], editPo = [], editFl = [], newFl = [], goneFl = [];
 
 try {
@@ -232,6 +239,7 @@ if (!Array.isArray(db.reinig)) db.reinig = [];
 if (!Array.isArray(db.reklam)) db.reklam = [];
 if (!Array.isArray(db.hygiene)) db.hygiene = [];
 if (!Array.isArray(db.befall)) db.befall = [];
+if (!Array.isArray(db.einkauf)) db.einkauf = [];
 db.tickets.forEach(t => {
   if (!Array.isArray(t.files)) t.files = [];
   if (!Array.isArray(t.pos)) t.pos = t.po ? [{f: "", n: String(t.po)}] : [];
@@ -295,7 +303,9 @@ function render() {
 
   setBadge("roomBadge", "cnt", db.rooms.length || "");
   renderReNote();
+  renderShNote();
   renderHyNote();
+  renderShNote();
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
     const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
@@ -710,6 +720,31 @@ function renderHyNote() {
     ? `<div class="card" style="border-left-color:#d64545"><div class="title" style="font-size:16px">🐀 Matuszak Hygiene: aktiver Befall (${bo.length})</div>${bo.map(x => `<div class="pi" onclick="openHyg('${x.id}')"><span><b style="padding:0;color:inherit">Werk ${esc(x.w)} – ${esc(bfTitle(x))}</b><br><small class="meta">${fd(x.d)}${x.von ? " · von " + esc(x.von) : ""} · ${BF_ST[x.st] || "Aktiver Befall"}</small></span></div>`).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>`
     : "";
 }
+/* ---------- Einkauf ---------- */
+const sObj = () => db.einkauf.find(x => x.id === "einkauf");
+function shopSummary(e) { return [e && e.fw ? e.fw + "× Fleischwurst" : "", e && e.mt ? e.mt + " kg Mett" : ""].filter(Boolean).join(", "); }
+function renderShop() {
+  const e = sObj() || {};
+  const sel = (id, arr, v, u) => `<select id="${id}"><option value="">–</option>${arr.map(n => `<option value="${n}"${String(v) === String(n) ? " selected" : ""}>${n} ${u}</option>`).join("")}</select>`;
+  $("shBody").innerHTML = `<div class="card" style="margin:12px 0">
+      <label for="sh_fw">🌭 Fleischwurst (Stück)</label>${sel("sh_fw", [1, 2, 3, 4, 5, 6], e.fw, "Stück")}
+      <label for="sh_mt" style="margin-top:10px;display:block">🥩 Mett (Kilo)</label>${sel("sh_mt", [1, 2, 3, 4], e.mt, "kg")}
+    </div>
+    <label for="sh_t">Notizen</label>
+    <textarea id="sh_t" rows="10" placeholder="z. B. Brötchen, Senf, Leuchtmittel …">${esc(e.t || "")}</textarea>
+    <p class="meta">${e.ed ? "Zuletzt gespeichert: " + fd(e.ed) + "." : ""}</p>
+    <button onclick="shSave()">💾 Speichern</button>`;
+}
+function shSave() {
+  const old = sObj(), r = Object.assign({}, old || {id: "einkauf"}, {t: $("sh_t").value, fw: $("sh_fw").value, mt: $("sh_mt").value, ed: today()});
+  const snap = JSON.stringify(db);
+  if (old) db.einkauf[db.einkauf.indexOf(old)] = r; else db.einkauf.push(r);
+  if (!save()) { db = JSON.parse(snap); return; }
+  renderShop(); renderShNote();
+}
+function renderShNote() { const e = sObj(), n = e && (e.fw ? 1 : 0) + (e && e.mt ? 1 : 0) + (e && String(e.t || "").trim() ? 1 : 0); setBadge("shBadge", n ? "cnt" : "ok", n || ""); }
+function openShop() { renderShop(); $("shop").style.display = "block"; $("shop").scrollTop = 0; }
+function closeShop() { $("shop").style.display = "none"; renderShNote(); }
 function openHyg(focusId) { HS = {he: false, bf: null, hl: null, focus: focusId || null}; bfPh = []; renderHyg(); $("hyg").style.display = "block"; $("hyg").scrollTop = 0; }
 function closeHyg() { HS.he = false; HS.bf = null; bfPh = []; $("hyg").style.display = "none"; renderHyNote(); }
 function hEdit() { HS.bf = null; HS.he = true; renderHyg(); }
@@ -885,7 +920,7 @@ async function importFile(e) {
   if (!file) return;
   try {
     const text = new TextDecoder("utf-8").decode(new Uint8Array(await file.arrayBuffer()));
-    let inc = [], pin = [], rin = [], sin = [], ein = [], uin = [], xin = [], hin = [], bin = [];
+    let inc = [], pin = [], rin = [], sin = [], ein = [], uin = [], xin = [], hin = [], bin = [], iin = [];
     if (/\.json$/i.test(file.name)) {
       const d = JSON.parse(text);
       inc = Array.isArray(d) ? d : d.tickets;
@@ -897,6 +932,7 @@ async function importFile(e) {
       xin = Array.isArray(d.reklam) ? d.reklam : [];
       hin = Array.isArray(d.hygiene) ? d.hygiene : [];
       bin = Array.isArray(d.befall) ? d.befall : [];
+      iin = Array.isArray(d.einkauf) ? d.einkauf : [];
       if (!Array.isArray(inc)) throw new Error("Ungültige Backup-Datei");
     } else {
       const rows = parseCSV(text, (text.split(/\r?\n/)[0].match(/;/g) || []).length >= (text.split(/\r?\n/)[0].match(/,/g) || []).length ? ";" : ",");
@@ -929,6 +965,7 @@ async function importFile(e) {
     uin.forEach(r => { if (r && r.id === "reinig" && !db.reinig.some(x => x.id === r.id)) db.reinig.push(r); });
     xin.forEach(r => { if (r && r.id && r.t && !db.reklam.some(x => x.id === r.id)) db.reklam.push(r); });
     hin.forEach(r => { if (r && r.id === "hygiene" && !db.hygiene.some(x => x.id === r.id)) db.hygiene.push(r); });
+    iin.forEach(r => { if (r && r.id === "einkauf" && !db.einkauf.some(x => x.id === r.id)) db.einkauf.push(r); });
     bin.forEach(r => { if (r && r.id && r.t && !db.befall.some(x => x.id === r.id)) db.befall.push(r); });
     pin.forEach(p => { if (p && p.title && p.next && INT[p.int] && !db.plans.some(x => x.id === p.id)) db.plans.push(p); });
     if (!save()) { db = JSON.parse(snapshot); return; }
@@ -978,7 +1015,7 @@ try { cfg = JSON.parse(localStorage.getItem(SC) || "null"); } catch (e) {}
 try { meta = JSON.parse(localStorage.getItem(SM) || "{}"); } catch (e) {}
 const saveMeta = () => { try { localStorage.setItem(SM, JSON.stringify(meta)); } catch (e) {} };
 const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h; };
-const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]), db.ent.map(x => ["e", x]), db.reinig.map(x => ["u", x]), db.reklam.map(x => ["x", x]), db.hygiene.map(x => ["h", x]), db.befall.map(x => ["b", x]));
+const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]), db.ent.map(x => ["e", x]), db.reinig.map(x => ["u", x]), db.reklam.map(x => ["x", x]), db.hygiene.map(x => ["h", x]), db.befall.map(x => ["b", x]), db.einkauf.map(x => ["i", x]));
 
 function setState(txt) {
   $("syncBtn").textContent = "☁️ Sync: " + txt;
@@ -1011,7 +1048,7 @@ function pushPending() {
       if (!f) return;
       d = JSON.stringify(f[1]);
     }
-    const target = ("uxhb".indexOf(m.k) >= 0) ? hcol : col;
+    const target = ("uxhbi".indexOf(m.k) >= 0) ? hcol : col;
     if (!target) return;
     target.doc(id).set({k: m.k, d: d, upd: m.u, del: !!m.del})
       .then(() => { if (meta[id] && meta[id].u === m.u) { meta[id].p = 0; saveMeta(); } setState("synchronisiert"); })
@@ -1032,12 +1069,13 @@ function applyRemote(id, r) {
     db.reklam = db.reklam.filter(x => x.id !== id);
     db.hygiene = db.hygiene.filter(x => x.id !== id);
     db.befall = db.befall.filter(x => x.id !== id);
+    db.einkauf = db.einkauf.filter(x => x.id !== id);
     meta[id] = {h: 0, u: r.upd, p: 0, k: r.k, del: true};
     return true;
   }
   let x;
   try { x = JSON.parse(r.d); } catch (e) { return false; }
-  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : r.k === "e" ? db.ent : r.k === "u" ? db.reinig : r.k === "x" ? db.reklam : r.k === "h" ? db.hygiene : r.k === "b" ? db.befall : db.tickets, i = list.findIndex(y => y.id === id);
+  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : r.k === "e" ? db.ent : r.k === "u" ? db.reinig : r.k === "x" ? db.reklam : r.k === "h" ? db.hygiene : r.k === "b" ? db.befall : r.k === "i" ? db.einkauf : db.tickets, i = list.findIndex(y => y.id === id);
   if (r.k === "t") {
     if (!Array.isArray(x.pl)) x.pl = [];
     if (!Array.isArray(x.photos)) x.photos = [];
@@ -1055,6 +1093,7 @@ function afterRemote() {
   if ($("rooms").style.display === "block") renderRooms();
   if ($("reinig").style.display === "block" && !RS.re && !RS.rk) renderReinig();
   const ae = document.activeElement;
+  if ($("shop").style.display === "block" && !(ae && $("shop").contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName))) renderShop();
   if ($("hyg").style.display === "block" && !HS.he && !HS.bf && !(ae && $("hyg").contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName))) renderHyg();
 }
 function startListen(user) {
@@ -1068,7 +1107,7 @@ function startListen(user) {
     if (changed) afterRemote();
     setState(snap.metadata.fromCache ? "offline (lokal)" : "synchronisiert");
   }, e => setState("Fehler: " + (e.code || e.message)));
-  unsub2 = hcol.where("k", "in", ["u", "x", "h", "b"]).onSnapshot(snap => {
+  unsub2 = hcol.where("k", "in", ["u", "x", "h", "b", "i"]).onSnapshot(snap => {
     let changed = false;
     snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
     if (changed) afterRemote();
