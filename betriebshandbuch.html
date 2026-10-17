@@ -131,7 +131,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <body>
 <div id="top">
   <div id="brand"><h1>📕 Facility Cockpit</h1><div id="credit"></div></div>
-  <div id="gqw"><input id="gq" type="search" placeholder="🔎 Alles durchsuchen (Tickets, Geräte, Firmen, Schlüssel …)  –  Taste /" autocomplete="off"><div id="gres"></div></div>
+  <div id="gqw"><input id="gq" type="search" placeholder="🔎 Alles durchsuchen (Tickets, Firmen, Schlüssel …)  –  Taste /" autocomplete="off"><div id="gres"></div></div>
   <span id="spacer"></span>
   <button class="tl" id="lockTop" onclick="lockNow()" style="display:none">🔒 Sperren</button>
   <button class="tl" id="syncBtn" onclick="openSync()">☁️ Sync: aus</button>
@@ -202,7 +202,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17g (Matuszak Hygiene statt Prüflisten)";
+const VERSION = "2026-10-17i (Einkauf: Fleischwurst, Mett)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -235,9 +235,9 @@ const PLAN_LEAD_DAYS = 7;
 const K_TICKET = ["title","werk","prio","status","from","mail","due","desc","notes"];
 
 /* ---------- Daten ---------- */
-const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], reinig:[], reklam:[], hygiene:[], befall:[]});
+const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], reinig:[], reklam:[], hygiene:[], befall:[], einkauf:[]});
 const LISTS = Object.keys(emptyDb()).filter(k => k !== "next");
-const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", u:"reinig", x:"reklam", h:"hygiene", b:"befall"};
+const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", u:"reinig", x:"reklam", h:"hygiene", b:"befall", i:"einkauf"};
 const SHARED = new Set(["t","p","r","s","e"]);     // liegen im selben Firebase-Ordner wie das Ticketsystem
 const kindOf = list => Object.keys(KIND).find(k => KIND[k] === list);
 let db = emptyDb();
@@ -552,6 +552,7 @@ const MODS = {
   home:    {ic:"🏠", t:"Übersicht"},
   reinig:  {ic:"🧽", t:"Unterhaltsreinigung"},
   hygiene: {ic:"🐀", t:"Matuszak Hygiene"},
+  einkauf: {ic:"🛒", t:"Einkauf"},
   tickets: {ic:"🎫", t:"Tickets"},
   plans:   {ic:"🔁", t:"Wartungspläne"},
   schul: {ic:"🎓", t:"Schulungstermine", one:"Schulung", nophoto:1,
@@ -580,11 +581,12 @@ const MODS = {
     fields:[{k:"t",l:"Raum (Name, Werk, Etage)",req:1,w:1,ph:"Gonzen, Werk 2, Erdgeschoss"}],
     title:x => x.t, sub:() => ""},
 };
-const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms"];
+const GEN = ["schul","absperr","schluessel","firmen","ent","rooms"];
 const NAV = [
   ["", ["home"]],
   ["Aufträge", ["tickets","plans","schul"]],
-  ["Anlagen & Wissen", ["geraete","absperr","schluessel","firmen","ent","rooms"]],
+  ["Anlagen & Wissen", ["schluessel","firmen","ent","rooms","absperr"]],
+  ["Einkauf", ["einkauf"]],
   ["Reinigung & Hygiene", ["reinig","hygiene"]]
 ];
 
@@ -596,7 +598,7 @@ function renderAll(force) { renderNav(); renderList(); if (force || !S.edit) ren
 function count(mod) {
   if (mod === "tickets") return db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length;
   if (mod === "plans") return db.plans.length;
-  if (mod === "reinig" || mod === "hygiene") return "";
+  if (mod === "reinig" || mod === "hygiene" || mod === "einkauf") return "";
   if (db[mod]) return db[mod].length;
   return "";
 }
@@ -604,7 +606,7 @@ function renderNav() {
   const warn = {plans: dueWartung().length, hygiene: db.befall.filter(bfOpen).length, reinig: db.reklam.filter(rkOpen).length};
   $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
     `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
-  $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig" || S.mod === "hygiene");
+  $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig" || S.mod === "hygiene" || S.mod === "einkauf");
 }
 
 /* ---------- Liste ---------- */
@@ -619,7 +621,7 @@ function rowHtml(mod, x) {
 }
 function renderList() {
   const m = S.mod, lp = $("lp");
-  if (m === "home" || m === "reinig" || m === "hygiene") { lp.innerHTML = ""; return; }
+  if (m === "home" || m === "reinig" || m === "hygiene" || m === "einkauf") { lp.innerHTML = ""; return; }
   if (m === "tickets") return renderTicketList();
   if (m === "plans") return renderPlanList();
   const M = MODS[m], q = (S.q[m] || "").toLowerCase();
@@ -641,6 +643,7 @@ function renderDetail() {
   if (m === "home") return renderHome();
   if (m === "reinig") return renderReinig();
   if (m === "hygiene") return renderHyg();
+  if (m === "einkauf") return renderEinkauf();
   if (m === "tickets" || (m === "plans" && S.sel && S.sel.k === "ticket")) return renderTicketDetail();
   if (m === "plans") return renderPlanDetail();
   if (!S.sel) { dp.innerHTML = `<div class="empty">Links einen Eintrag wählen oder mit „＋ Neu“ anlegen.</div>`; return; }
@@ -876,6 +879,28 @@ function delPlan() {
   const p = db.plans.find(x => x.id === S.sel.id);
   if (!p || !confirm("Wiederkehrende Aufgabe löschen? Bereits erzeugte Tickets bleiben erhalten.")) return;
   db.plans = db.plans.filter(x => x.id !== p.id); save(); S.sel = null; S.edit = false; renderAll(true);
+}
+
+/* ---------- Einkauf (ein großes Notizfeld) ---------- */
+const eObj = () => db.einkauf.find(x => x.id === "einkauf");
+function renderEinkauf() {
+  const e = eObj() || {};
+  $("dp").innerHTML = `<div class="dh"><h2>🛒 Einkauf</h2></div>
+    <p class="meta" style="margin-top:0">Hier einfach eintragen, was eingekauft wurde oder noch besorgt werden muss.${e.ed ? " Zuletzt gespeichert: " + fd(e.ed) + "." : ""}</p>
+    <div class="grid" style="max-width:560px;margin-bottom:12px">
+      <div><label for="ek_fw">🌭 Fleischwurst (Stück)</label><select id="ek_fw"><option value="">–</option>${[1,2,3,4,5,6].map(n => `<option value="${n}"${String(e.fw) === String(n) ? " selected" : ""}>${n} Stück</option>`).join("")}</select></div>
+      <div><label for="ek_mt">🥩 Mett (Kilo)</label><select id="ek_mt"><option value="">–</option>${[1,2,3,4].map(n => `<option value="${n}"${String(e.mt) === String(n) ? " selected" : ""}>${n} kg</option>`).join("")}</select></div>
+    </div>
+    <label for="ek_t">Notizen</label>
+    <textarea id="ek_t" rows="18" style="width:100%;min-height:40vh;font-size:16px;line-height:1.5" placeholder="z. B. 17.10. Leuchtmittel LED 20 Stück, Firma XY, 48 €">${esc(e.t || "")}</textarea>
+    <div class="bar"><button onclick="ekSave()">💾 Speichern</button><button class="sec" onclick="renderEinkauf()">↩ Zurücksetzen</button></div>`;
+}
+function ekSave() {
+  const old = eObj(), r = Object.assign({}, old || {id:"einkauf"}, {t: $("ek_t").value, fw: $("ek_fw").value, mt: $("ek_mt").value, ed: today()});
+  const snap = JSON.stringify(db);
+  if (old) db.einkauf[db.einkauf.indexOf(old)] = r; else db.einkauf.push(r);
+  if (!save()) { db = JSON.parse(snap); return; }
+  toast("Gespeichert ✓"); renderEinkauf();
 }
 
 /* ---------- Unterhaltsreinigung ---------- */
