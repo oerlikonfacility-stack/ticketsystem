@@ -111,7 +111,7 @@ button.tile{position:relative;background:var(--card);color:var(--tx);border:1px 
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17d (Kachel Einkauf)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17f (Einkauf erledigt)</small></p>
 </main>
 
 
@@ -726,23 +726,31 @@ function shopSummary(e) { return [e && e.fw ? e.fw + "× Fleischwurst" : "", e &
 function renderShop() {
   const e = sObj() || {};
   const sel = (id, arr, v, u) => `<select id="${id}"><option value="">–</option>${arr.map(n => `<option value="${n}"${String(v) === String(n) ? " selected" : ""}>${n} ${u}</option>`).join("")}</select>`;
-  $("shBody").innerHTML = `<div class="card" style="margin:12px 0">
+  $("shBody").innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:12px 14px;background:var(--card);border:2px solid var(--pr);border-radius:12px;font-weight:700;cursor:pointer"><input type="checkbox" id="sh_ak" style="width:22px;height:22px;margin:0"${e.ak ? " checked" : ""}> 🔔 Einkauf aktiv – es muss eingekauft werden</label>
+    <div class="card" style="margin:12px 0">
       <label for="sh_fw">🌭 Fleischwurst (Stück)</label>${sel("sh_fw", [1, 2, 3, 4, 5, 6], e.fw, "Stück")}
       <label for="sh_mt" style="margin-top:10px;display:block">🥩 Mett (Kilo)</label>${sel("sh_mt", [1, 2, 3, 4], e.mt, "kg")}
     </div>
     <label for="sh_t">Notizen</label>
     <textarea id="sh_t" rows="10" placeholder="z. B. Brötchen, Senf, Leuchtmittel …">${esc(e.t || "")}</textarea>
     <p class="meta">${e.ed ? "Zuletzt gespeichert: " + fd(e.ed) + "." : ""}</p>
-    <button onclick="shSave()">💾 Speichern</button>`;
+    <button onclick="shSave()">💾 Speichern</button>${e.ak ? `<button class="sec" onclick="shDone()">✅ Einkauf erledigt</button>` : ""}`;
 }
 function shSave() {
-  const old = sObj(), r = Object.assign({}, old || {id: "einkauf"}, {t: $("sh_t").value, fw: $("sh_fw").value, mt: $("sh_mt").value, ed: today()});
+  const old = sObj(), r = Object.assign({}, old || {id: "einkauf"}, {t: $("sh_t").value, fw: $("sh_fw").value, mt: $("sh_mt").value, ak: $("sh_ak").checked ? "1" : "", ed: today()});
   const snap = JSON.stringify(db);
   if (old) db.einkauf[db.einkauf.indexOf(old)] = r; else db.einkauf.push(r);
   if (!save()) { db = JSON.parse(snap); return; }
   renderShop(); renderShNote();
 }
-function renderShNote() { const e = sObj(), n = e && (e.fw ? 1 : 0) + (e && e.mt ? 1 : 0) + (e && String(e.t || "").trim() ? 1 : 0); setBadge("shBadge", n ? "cnt" : "ok", n || ""); }
+function shDone() {
+  const old = sObj(); if (!old || !confirm("Einkauf erledigt? Das Signal wird ausgeschaltet, Fleischwurst, Mett und Notizen werden geleert.")) return;
+  const snap = JSON.stringify(db);
+  db.einkauf[db.einkauf.indexOf(old)] = Object.assign({}, old, {t: "", fw: "", mt: "", ak: "", ed: today()});
+  if (!save()) { db = JSON.parse(snap); return; }
+  renderShop(); renderShNote();
+}
+function renderShNote() { const e = sObj(); setBadge("shBadge", e && e.ak ? "bad" : "ok", e && e.ak ? "!" : ""); }
 function openShop() { renderShop(); $("shop").style.display = "block"; $("shop").scrollTop = 0; }
 function closeShop() { $("shop").style.display = "none"; renderShNote(); }
 function openHyg(focusId) { HS = {he: false, bf: null, hl: null, focus: focusId || null}; bfPh = []; renderHyg(); $("hyg").style.display = "block"; $("hyg").scrollTop = 0; }
