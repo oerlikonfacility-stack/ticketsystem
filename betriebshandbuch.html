@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#17324d">
-<title>Peters Betriebshandbuch</title>
+<title>Facility Cockpit</title>
 <style>
 :root{--bg:#f1f4f7;--card:#fff;--tx:#182431;--mu:#667581;--bd:#dce3e9;--pr:#245d86;--hd:#17324d;--sec:#e0e8ef;--ok:#2e9e5b;--warn:#e8892b;--bad:#d64545}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1720;--card:#18232f;--tx:#e8eef4;--mu:#93a4b3;--bd:#27384a;--pr:#3b8bc4;--hd:#0b2236;--sec:#223446}}
@@ -25,7 +25,9 @@ h3{margin:18px 0 6px;font-size:15px}
 .meta{color:var(--mu);font-size:13.5px;margin:4px 0;overflow-wrap:anywhere}
 .late{color:var(--bad);font-weight:700}
 #top{height:56px;display:flex;align-items:center;gap:18px;padding:0 16px;background:var(--hd);color:#fff;position:relative;z-index:20}
-#top h1{margin:0;font-size:19px;white-space:nowrap}
+#top h1{margin:0;font-size:19px;line-height:1.15;white-space:nowrap}
+#brand{display:flex;flex-direction:column;justify-content:center}
+#credit{font-size:10.5px;opacity:.7;white-space:nowrap;line-height:1.2}
 #gqw{flex:1;max-width:640px;position:relative}
 #gq{margin:0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;padding:8px 12px}
 #gq::placeholder{color:#c5d6e4}
@@ -128,7 +130,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 </head>
 <body>
 <div id="top">
-  <h1>📘 Peters Betriebshandbuch</h1>
+  <div id="brand"><h1>📕 Facility Cockpit</h1><div id="credit"></div></div>
   <div id="gqw"><input id="gq" type="search" placeholder="🔎 Alles durchsuchen (Tickets, Geräte, Firmen, Schlüssel …)  –  Taste /" autocomplete="off"><div id="gres"></div></div>
   <span id="spacer"></span>
   <button class="tl" id="lockTop" onclick="lockNow()" style="display:none">🔒 Sperren</button>
@@ -185,11 +187,12 @@ body.locked #top,body.locked #app{visibility:hidden}
 </div></div>
 
 <div id="lock"><div class="lbox">
-  <h2>🔒 Betriebshandbuch</h2>
+  <h2>🔒 Facility Cockpit</h2>
   <p class="meta" id="lk_msg">Bitte PIN eingeben.</p>
   <input id="lk_in" type="password" autocomplete="off" aria-label="PIN">
   <div class="err" id="lk_err"></div>
   <button class="go" id="lk_go" onclick="tryUnlock()">Entsperren</button>
+  <p class="meta" id="lk_credit" style="font-size:11px;margin:16px 0 0"></p>
   <p style="margin:14px 0 0"><a onclick="pinForgot()">PIN vergessen?</a></p>
 </div></div>
 
@@ -199,7 +202,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17c (Wartungspläne mit Ereignissen & Ergebnissen)";
+const VERSION = "2026-10-17e (Facility Cockpit)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -706,7 +709,7 @@ function icsSchul(id) {
   const p = n => String(n).padStart(2, "0"), st = new Date(x.d + "T" + (x.tm || "09:00")), en = new Date(st.getTime() + 3600000);
   const f = d => d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "T" + p(d.getHours()) + p(d.getMinutes()) + "00";
   const e = v => String(v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
-  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Peter//Betriebshandbuch//DE", "BEGIN:VEVENT", "UID:" + x.id + "@betriebshandbuch", "DTSTAMP:" + f(new Date()), "DTSTART:" + f(st), "DTEND:" + f(en),
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Peter//Facility Cockpit//DE", "BEGIN:VEVENT", "UID:" + x.id + "@betriebshandbuch", "DTSTAMP:" + f(new Date()), "DTSTART:" + f(st), "DTEND:" + f(en),
     "SUMMARY:" + e("Schulung: " + x.t), "LOCATION:" + e(x.o || ""), "DESCRIPTION:" + e(x.a ? "Ausbilder: " + x.a : ""), "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + e("Schulung: " + x.t), "TRIGGER:-PT1H", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
   saveBlob(new Blob([ics], {type:"text/calendar"}), "Schulung-" + x.d + ".ics");
 }
@@ -1050,7 +1053,7 @@ document.querySelectorAll(".modal").forEach(m => m.addEventListener("mousedown",
 
 /* ---------- Backup / Import ---------- */
 function openSys() { $("verInfo").textContent = "Version " + VERSION; $("sys").style.display = "flex"; }
-function backupJSON() { saveBlob(new Blob([JSON.stringify({format:"PetersBetriebshandbuch", ...db}, null, 2)], {type:"application/json"}), "peters-betriebshandbuch-backup-" + today() + ".json"); }
+function backupJSON() { saveBlob(new Blob([JSON.stringify({format:"PetersBetriebshandbuch", ...db}, null, 2)], {type:"application/json"}), "facility-cockpit-backup-" + today() + ".json"); }
 function mergeDb(d) {
   if (Array.isArray(d)) d = {tickets: d};
   let added = 0;
@@ -1171,7 +1174,7 @@ async function pinOff() {
   pinCfg = null; pinUI(); $("pinm").style.display = "none"; toast("PIN-Sperre ausgeschaltet");
 }
 function pinForgot() {
-  const t = prompt("PIN vergessen?\n\nDann gibt es nur den Weg über das Zurücksetzen: Alle Daten des Betriebshandbuchs in DIESEM Browser werden gelöscht und die Anmeldung beim Sync wird beendet (auch im Ticketsystem, du musst dich dort neu anmelden). Danach holst du die Daten über den Sync wieder vom Server.\n\nOhne eingerichteten Sync sind die Daten verloren (außer du hast ein Backup).\n\nZum Bestätigen LÖSCHEN eintippen:");
+  const t = prompt("PIN vergessen?\n\nDann gibt es nur den Weg über das Zurücksetzen: Alle Daten des Facility Cockpits in DIESEM Browser werden gelöscht und die Anmeldung beim Sync wird beendet (auch im Ticketsystem, du musst dich dort neu anmelden). Danach holst du die Daten über den Sync wieder vom Server.\n\nOhne eingerichteten Sync sind die Daten verloren (außer du hast ein Backup).\n\nZum Bestätigen LÖSCHEN eintippen:");
   if (t === null) return;
   if (t.trim().toUpperCase() !== "LÖSCHEN") { alert("Nicht bestätigt, nichts wurde gelöscht."); return; }
   try { localStorage.setItem(PWIPE, "1"); } catch (e) {}
@@ -1194,6 +1197,8 @@ async function startApp() {
   initSync();
 }
 (async function () {
+  const cr = "produced by © Peter Schloer 10/2026 · Version " + VERSION.split(" ")[0];
+  $("credit").textContent = cr; $("lk_credit").textContent = cr;
   if (localStorage.getItem(PWIPE)) { await wipeLocal(); }
   pinUI();
   if (pinCfg) lockNow(); else startApp();
