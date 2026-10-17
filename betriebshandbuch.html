@@ -202,7 +202,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17e (Facility Cockpit)";
+const VERSION = "2026-10-17f (Matuszak Hygiene statt Prüflisten)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -235,9 +235,9 @@ const PLAN_LEAD_DAYS = 7;
 const K_TICKET = ["title","werk","prio","status","from","mail","due","desc","notes"];
 
 /* ---------- Daten ---------- */
-const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], pruef:[], reinig:[], reklam:[]});
+const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], reinig:[], reklam:[], hygiene:[], befall:[]});
 const LISTS = Object.keys(emptyDb()).filter(k => k !== "next");
-const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", c:"pruef", u:"reinig", x:"reklam"};
+const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", u:"reinig", x:"reklam", h:"hygiene", b:"befall"};
 const SHARED = new Set(["t","p","r","s","e"]);     // liegen im selben Firebase-Ordner wie das Ticketsystem
 const kindOf = list => Object.keys(KIND).find(k => KIND[k] === list);
 let db = emptyDb();
@@ -551,6 +551,7 @@ const ART = ["Wasser", "Gas", "Strom", "Heizung", "Druckluft", "Lüftung", "Sons
 const MODS = {
   home:    {ic:"🏠", t:"Übersicht"},
   reinig:  {ic:"🧽", t:"Unterhaltsreinigung"},
+  hygiene: {ic:"🐀", t:"Matuszak Hygiene"},
   tickets: {ic:"🎫", t:"Tickets"},
   plans:   {ic:"🔁", t:"Wartungspläne"},
   schul: {ic:"🎓", t:"Schulungstermine", one:"Schulung", nophoto:1,
@@ -578,38 +579,32 @@ const MODS = {
   rooms: {ic:"🚪", t:"Besprechungsräume", one:"Raum", nophoto:1, nodocs:1,
     fields:[{k:"t",l:"Raum (Name, Werk, Etage)",req:1,w:1,ph:"Gonzen, Werk 2, Erdgeschoss"}],
     title:x => x.t, sub:() => ""},
-  pruef: {ic:"✅", t:"Prüflisten", one:"Prüfliste", nodocs:1,
-    fields:[{k:"t",l:"Name der Prüfung",req:1,w:1,ph:"z. B. Rundgang Notbeleuchtung"},{k:"i",l:"Intervall",type:"sel",opts:INT,empty:"kein fester Rhythmus"},{k:"w",l:"Werk",type:"werk"},{k:"pts",l:"Prüfpunkte (einer pro Zeile)",type:"area",w:1,rows:8},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
-    title:x => x.t,
-    sub:x => { const nd = pruefNext(x); return [x.i ? INT[x.i] : "", nd === "–" ? "" : nd === "nie" ? "noch nie geprüft" : "nächste: " + fd(nd)]; },
-    flag:x => { const nd = pruefNext(x); return (nd === "nie" && x.i) || (nd !== "–" && nd !== "nie" && nd < today()) ? "⚠️ fällig" : ""; },
-    view:x => pruefView(x)}
 };
-const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms","pruef"];
+const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms"];
 const NAV = [
   ["", ["home"]],
   ["Aufträge", ["tickets","plans","schul"]],
   ["Anlagen & Wissen", ["geraete","absperr","schluessel","firmen","ent","rooms"]],
-  ["Kontrolle & Reinigung", ["pruef","reinig"]]
+  ["Reinigung & Hygiene", ["reinig","hygiene"]]
 ];
 
 /* ---------- Zustand & Rahmen ---------- */
 const S = {mod:"home", sel:null, edit:false, q:{}, tv:"aktiv", tw:"", tp:"", ts:""};
-function go(mod, sel) { resetEd(); S.logEdit = null; S.re = null; S.rk = null; S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
+function go(mod, sel) { resetEd(); S.logEdit = null; S.he = null; S.bf = null; S.hl = null; S.re = null; S.rk = null; S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
 function renderAll(force) { renderNav(); renderList(); if (force || !S.edit) renderDetail(); }
 
 function count(mod) {
   if (mod === "tickets") return db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length;
   if (mod === "plans") return db.plans.length;
-  if (mod === "reinig") return "";
+  if (mod === "reinig" || mod === "hygiene") return "";
   if (db[mod]) return db[mod].length;
   return "";
 }
 function renderNav() {
-  const warn = {plans: dueWartung().length, pruef: db.pruef.filter(x => MODS.pruef.flag(x)).length, reinig: db.reklam.filter(rkOpen).length};
+  const warn = {plans: dueWartung().length, hygiene: db.befall.filter(bfOpen).length, reinig: db.reklam.filter(rkOpen).length};
   $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
     `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
-  $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig");
+  $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig" || S.mod === "hygiene");
 }
 
 /* ---------- Liste ---------- */
@@ -624,7 +619,7 @@ function rowHtml(mod, x) {
 }
 function renderList() {
   const m = S.mod, lp = $("lp");
-  if (m === "home" || m === "reinig") { lp.innerHTML = ""; return; }
+  if (m === "home" || m === "reinig" || m === "hygiene") { lp.innerHTML = ""; return; }
   if (m === "tickets") return renderTicketList();
   if (m === "plans") return renderPlanList();
   const M = MODS[m], q = (S.q[m] || "").toLowerCase();
@@ -645,6 +640,7 @@ function renderDetail() {
   const m = S.mod, dp = $("dp");
   if (m === "home") return renderHome();
   if (m === "reinig") return renderReinig();
+  if (m === "hygiene") return renderHyg();
   if (m === "tickets" || (m === "plans" && S.sel && S.sel.k === "ticket")) return renderTicketDetail();
   if (m === "plans") return renderPlanDetail();
   if (!S.sel) { dp.innerHTML = `<div class="empty">Links einen Eintrag wählen oder mit „＋ Neu“ anlegen.</div>`; return; }
@@ -719,30 +715,6 @@ function saveBlob(blob, name) {
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 10000);
 }
-/* Prüflisten */
-const pruefLast = x => (x.l || []).map(l => l.d).sort().pop();
-function pruefNext(x) { const l = pruefLast(x); return x.i ? (l ? addInt(l, x.i) : "nie") : "–"; }
-function pruefView(x) {
-  const pts = String(x.pts || "").split("\n").map(s => s.trim()).filter(Boolean), l = (x.l || []).slice().sort((a, b) => b.d.localeCompare(a.d));
-  let h = `<h3>Prüfung durchführen</h3>`;
-  if (!pts.length) h += `<p class="meta">Noch keine Prüfpunkte – über „Bearbeiten“ eintragen.</p>`;
-  else {
-    h += pts.map((p, i) => `<label class="pi" style="color:var(--tx);font-size:15px;font-weight:500;cursor:pointer"><input type="checkbox" id="pc_${i}" style="width:auto;margin:0" checked> <span>${esc(p)}</span></label>`).join("");
-    h += `<p class="meta">Häkchen = in Ordnung. Nicht in Ordnung → Häkchen entfernen.</p><input id="pn" placeholder="Bemerkung (optional)"><button onclick="pruefDone('${x.id}')">✔ Prüfung heute abschließen</button>`;
-  }
-  h += `<h3>Bisherige Prüfungen (${l.length})</h3>`;
-  h += l.length ? `<table class="t"><tr><th>Datum</th><th>Ergebnis</th><th>Bemerkung</th><th></th></tr>${l.map((e, i) => `<tr><td>${fd(e.d)}</td><td>${(e.miss || []).length ? `<span class="late">Mängel: ${esc(e.miss.join(", "))}</span>` : "✅ alles in Ordnung"}</td><td>${esc(e.n || "")}</td><td><b style="cursor:pointer" onclick="pruefDel('${x.id}','${e.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Prüfung eingetragen.</p>`;
-  return h;
-}
-function pruefDone(id) {
-  const x = db.pruef.find(y => y.id === id); if (!x) return;
-  const pts = String(x.pts || "").split("\n").map(s => s.trim()).filter(Boolean);
-  const miss = pts.filter((p, i) => !$("pc_" + i).checked);
-  x.l = (x.l || []).concat([{id: uid(), d: today(), miss: miss, n: $("pn").value.trim()}]);
-  save(); toast(miss.length ? "Prüfung mit Mängeln gespeichert" : "Prüfung gespeichert ✓"); renderAll(true);
-}
-function pruefDel(id, eid) { const x = db.pruef.find(y => y.id === id); if (!x || !confirm("Diesen Prüfeintrag löschen?")) return; x.l = x.l.filter(e => e.id !== eid); save(); renderAll(true); }
-
 /* ---------- Tickets ---------- */
 const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
 function ticketRow(t) {
@@ -997,6 +969,124 @@ function renderReinig() {
   if (S.focus) { const el = $("rk_" + S.focus); S.focus = null; if (el) { el.scrollIntoView({block:"center"}); el.style.outline = "2px solid var(--pr)"; } }
 }
 
+/* ---------- Matuszak Hygiene (Schädlingsbekämpfung) ---------- */
+const BF_ST = {aktiv:"Aktiver Befall", behandlung:"In Behandlung", erledigt:"Beseitigt"};
+const BF_ART = ["Mäuse","Ratten","Schaben","Motten","Ameisen","Wespen / Insekten","Tauben / Vögel","Sonstiges"];
+const bfOpen = x => x.st !== "erledigt";
+const bfSort = (a, b) => String(b.d || "").localeCompare(String(a.d || ""));
+const bfTitle = x => [x.s, x.o].filter(Boolean).join(" – ") || String(x.t || "").split("\n")[0].slice(0, 60);
+const hObj = () => db.hygiene.find(x => x.id === "hygiene");
+const hLast = h => ((h && h.wl) || []).map(x => x.d).sort().pop();
+function hEdit() { resetEd(); S.bf = null; S.he = true; S.edit = true; renderDetail(); const f = $("h_f"); if (f) f.focus(); }
+function hCancel() { resetEd(); S.he = null; S.bf = null; S.hl = null; S.edit = false; renderDetail(); }
+function hSaveK() {
+  const old = hObj(), h = old ? JSON.parse(JSON.stringify(old)) : {id:"hygiene", k:{}, wl:[], nx:""};
+  h.k = {f: $("h_f").value.trim(), n: $("h_n").value.trim(), t: $("h_t").value.trim(), m: $("h_m").value.trim(), o: $("h_o").value.trim()};
+  const snap = JSON.stringify(db);
+  if (old) db.hygiene[db.hygiene.indexOf(old)] = h; else db.hygiene.push(h);
+  if (!save()) { db = JSON.parse(snap); return; }
+  S.he = null; S.edit = false; toast("Gespeichert ✓"); renderAll(true);
+}
+function hNx(v) {
+  const old = hObj(), h = old ? JSON.parse(JSON.stringify(old)) : {id:"hygiene", k:{}, wl:[], nx:""};
+  h.nx = v || "";
+  if (old) db.hygiene[db.hygiene.indexOf(old)] = h; else db.hygiene.push(h);
+  save(); renderAll(true);
+}
+function hlEdit(eid) { S.hl = eid || null; const h = hObj(), x = (h && h.wl || []).find(y => y.id === eid) || {d: today(), n: ""}; $("hl_d").value = x.d; $("hl_n").value = x.n; $("hl_b").textContent = eid ? "✔ Änderung übernehmen" : "＋ Eintragen"; $("hl_c").style.display = eid ? "" : "none"; if (eid) $("hl_n").focus(); }
+function hlSave() {
+  const d = $("hl_d").value || today(), n = $("hl_n").value.trim();
+  const old = hObj(), h = old ? JSON.parse(JSON.stringify(old)) : {id:"hygiene", k:{}, wl:[], nx:""};
+  h.wl = (h.wl || []).slice();
+  const i = S.hl ? h.wl.findIndex(x => x.id === S.hl) : -1;
+  if (i >= 0) h.wl[i] = Object.assign({}, h.wl[i], {d: d, n: n}); else h.wl.push({id: uid(), d: d, n: n});
+  const snap = JSON.stringify(db);
+  if (old) db.hygiene[db.hygiene.indexOf(old)] = h; else db.hygiene.push(h);
+  if (!save()) { db = JSON.parse(snap); return; }
+  S.hl = null; toast("Wartung eingetragen ✓"); renderAll(true);
+}
+function hlDel(eid) {
+  const h = hObj(); if (!h || !confirm("Diese Wartung aus dem Protokoll löschen?")) return;
+  h.wl = (h.wl || []).filter(x => x.id !== eid); S.hl = null; save(); renderAll(true);
+}
+function bfNew() { resetEd(); S.he = null; S.bf = "new"; S.edit = true; renderDetail(); const f = $("bf_t"); if (f) f.focus(); }
+function bfEdit(id) { const x = db.befall.find(y => y.id === id); if (!x) return; resetEd(); edPh = (x.photos || []).slice(); S.he = null; S.bf = id; S.edit = true; renderDetail(); }
+function bfSave() {
+  const t = $("bf_t").value.trim();
+  if (!t) { alert("Bitte eintragen, was festgestellt wurde."); $("bf_t").focus(); return; }
+  const old = db.befall.find(y => y.id === S.bf), x = old ? JSON.parse(JSON.stringify(old)) : {id: uid()};
+  x.w = $("bf_w").value; x.d = $("bf_d").value || today(); x.von = $("bf_v").value.trim(); x.s = $("bf_a").value; x.o = $("bf_o").value.trim();
+  x.st = $("bf_s").value; x.t = t; x.ma = $("bf_m").value.trim(); x.photos = edPh.slice();
+  if (x.st === "erledigt") x.ed = x.ed || today(); else delete x.ed;
+  const snap = JSON.stringify(db);
+  if (old) db.befall[db.befall.indexOf(old)] = x; else db.befall.push(x);
+  if (!save()) { db = JSON.parse(snap); return; }
+  resetEd(); S.bf = null; S.edit = false; toast("Gespeichert ✓"); renderAll(true);
+}
+function bfSet(id, st) {
+  const x = db.befall.find(y => y.id === id); if (!x) return;
+  x.st = st; if (st === "erledigt") x.ed = today(); else delete x.ed;
+  save(); renderAll(true);
+}
+function bfDel(id) {
+  const x = db.befall.find(y => y.id === id);
+  if (!x || !confirm("Diese Befallsmeldung wirklich löschen?")) return;
+  db.befall = db.befall.filter(y => y.id !== id); save(); renderAll(true);
+}
+function bfForm(x) {
+  const v = x || {w:"1", d:today(), st:"aktiv", s:"Mäuse"};
+  const art = Object.fromEntries(BF_ART.map(a => [a, a]));
+  return `<div class="card" style="border-color:var(--pr);margin-bottom:10px"><h3>${x ? "Befallsmeldung bearbeiten" : "Neue Befallsmeldung"}</h3><div class="grid">
+    <div><label for="bf_w">Werk</label><select id="bf_w">${opts(WERKE, v.w)}</select></div>
+    <div><label for="bf_d">Datum</label><input id="bf_d" type="date" value="${esc(v.d)}"></div>
+    <div><label for="bf_a">Schädling / Art</label><select id="bf_a">${opts(art, v.s)}</select></div>
+    <div><label for="bf_s">Status</label><select id="bf_s">${opts(BF_ST, v.st)}</select></div>
+    <div><label for="bf_o">Wo? (Ort / Bereich)</label><input id="bf_o" value="${esc(v.o || "")}" placeholder="z. B. Lager Halle 2, Küche"></div>
+    <div><label for="bf_v">Wer meldet?</label><input id="bf_v" value="${esc(v.von || "")}" placeholder="Name / Abteilung"></div>
+    <div class="w"><label for="bf_t">Was wurde festgestellt? *</label><textarea id="bf_t" rows="4">${esc(v.t || "")}</textarea></div>
+    <div class="w"><label for="bf_m">Maßnahme / Befund von Matuszak</label><textarea id="bf_m" rows="3">${esc(v.ma || "")}</textarea></div></div>
+    ${mediaHtml(true, false)}<div class="bar"><button onclick="bfSave()">💾 Speichern</button><button class="sec" onclick="hCancel()">Abbrechen</button></div></div>`;
+}
+function bfCard(x) {
+  const op = bfOpen(x);
+  return `<div class="card" id="bf_${x.id}" style="margin-bottom:10px${op ? ";border-left:4px solid var(--bad)" : ""}">
+    <div class="meta"><span class="badge s-${x.st === "behandlung" ? "bearbeitung" : x.st === "erledigt" ? "erledigt" : "offen"}">${BF_ST[x.st] || "Aktiver Befall"}</span><b>${esc(x.s || "Befall")}</b> · Werk ${esc(x.w)}${x.o ? " · " + esc(x.o) : ""} · ${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""}${x.ed ? " · beseitigt am " + fd(x.ed) : ""}</div>
+    <div style="margin:6px 0;white-space:pre-wrap">${esc(x.t)}</div>
+    ${x.ma ? `<div class="meta" style="white-space:pre-wrap"><b>Maßnahme:</b> ${linkify(x.ma)}</div>` : ""}
+    ${photosView(x)}
+    <div class="bar" style="margin-top:8px"><button class="sec sm" onclick="bfEdit('${x.id}')">✏️ Bearbeiten</button>${op ? (x.st === "aktiv" ? `<button class="sec sm" onclick="bfSet('${x.id}','behandlung')">🔧 In Behandlung</button>` : "") + `<button class="sec sm" onclick="bfSet('${x.id}','erledigt')">✔ Beseitigt</button>` : `<button class="sec sm" onclick="bfSet('${x.id}','aktiv')">↩ Wieder aktiv</button>`}<button class="sec sm" onclick="bfDel('${x.id}')">🗑️ Löschen</button></div></div>`;
+}
+function renderHyg() {
+  const h = hObj() || {}, k = h.k || {}, wl = (h.wl || []).slice().sort((a, b) => String(b.d).localeCompare(String(a.d)) || String(b.id).localeCompare(String(a.id)));
+  const lw = wl.length ? wl[0].d : "", days = lw ? Math.floor((Date.now() - new Date(lw + "T12:00:00")) / 864e5) : 0;
+  const fm = (id, l, v, tx) => `<div${tx ? ' class="w"' : ""}><label for="h_${id}">${l}</label>${tx ? `<textarea id="h_${id}" rows="3">${esc(v || "")}</textarea>` : `<input id="h_${id}" value="${esc(v || "")}">`}</div>`;
+  const kv = (l, v, raw) => `<div class="kv"><div class="k">${l}</div><div class="v">${v ? (raw ? v : esc(v)) : "–"}</div></div>`;
+  const open = db.befall.filter(bfOpen).sort(bfSort), done = db.befall.filter(x => !bfOpen(x)).sort(bfSort);
+  const head = (t, btn) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px"><h3 style="margin:0">${t}</h3>${btn}</div>`;
+  let o = `<div class="dh"><h2>🐀 Matuszak Hygiene <small class="meta" style="font-weight:400">Schädlingsbekämpfung</small></h2></div>`;
+  // 1. Kontakt
+  o += `<div class="card" style="margin-bottom:14px">${head("👤 Kontakt", S.he ? "" : `<button class="sec sm" onclick="hEdit()">✏️ Bearbeiten</button>`)}`;
+  if (S.he) o += `<div class="grid">${fm("f", "Firma", k.f || "Matuszak Hygiene")}${fm("n", "Ansprechpartner / Techniker", k.n)}${fm("t", "Telefon", k.t)}${fm("m", "E-Mail", k.m)}${fm("o", "Vertrag, Kundennummer, Notizen", k.o, 1)}</div><div class="bar"><button onclick="hSaveK()">💾 Speichern</button><button class="sec" onclick="hCancel()">Abbrechen</button></div>`;
+  else o += `<div class="grid">${kv("Firma", k.f || "Matuszak Hygiene")}${kv("Ansprechpartner", k.n)}${kv("Telefon", linkify(k.t || ""), 1)}${kv("E-Mail", linkify(k.m || ""), 1)}${k.o ? `<div class="kv w"><div class="k">Vertrag, Kundennummer, Notizen</div><div class="v" style="white-space:pre-wrap">${linkify(k.o)}</div></div>` : ""}</div>`;
+  o += `</div>`;
+  // 2. Wartung
+  o += `<div class="card" style="margin-bottom:14px">${head("🔧 Wartung", "")}
+    <div class="grid"><div class="kv"><div class="k">Letzte Wartung</div><div class="v" style="font-size:20px;font-weight:700">${lw ? fd(lw) : "noch keine eingetragen"}${lw ? ` <small class="meta" style="font-weight:400">(vor ${days} ${days === 1 ? "Tag" : "Tagen"})</small>` : ""}</div></div>
+    <div><label for="h_nx">Nächster Termin (optional)</label><input id="h_nx" type="date" value="${esc(h.nx || "")}" onchange="hNx(this.value)"></div></div>
+    <h3>Wartung eintragen</h3>
+    <div class="grid"><div><label for="hl_d">Datum</label><input id="hl_d" type="date" value="${today()}"></div><div class="w"><label for="hl_n">Bericht / Bemerkung</label><textarea id="hl_n" rows="2" placeholder="z. B. Köderstationen kontrolliert, keine Aktivität"></textarea></div></div>
+    <div class="bar" style="margin-top:0"><button id="hl_b" onclick="hlSave()">＋ Eintragen</button><button class="sec" id="hl_c" style="display:none" onclick="hlEdit('')">Abbrechen</button></div>
+    ${wl.length ? `<table class="t" style="margin-top:12px"><tr><th>Datum</th><th>Bericht</th><th></th></tr>${wl.map(x => `<tr><td style="white-space:nowrap">${fd(x.d)}</td><td style="white-space:pre-wrap">${esc(x.n || "")}</td><td style="white-space:nowrap"><b style="cursor:pointer" title="Bearbeiten" onclick="hlEdit('${x.id}')">✎</b> <b style="cursor:pointer" title="Löschen" onclick="hlDel('${x.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Wartung im Protokoll.</p>`}</div>`;
+  // 3. Befall
+  o += `<div class="card">${head(`⚠️ Befallsmeldungen <small class="meta" style="font-weight:400">(${open.length} aktiv)</small>`, S.bf ? "" : `<button class="sm" onclick="bfNew()">＋ Befall melden</button>`)}`;
+  if (S.bf === "new") o += bfForm(null);
+  o += open.map(x => S.bf === x.id ? bfForm(x) : bfCard(x)).join("") || (S.bf === "new" ? "" : `<p class="meta">Kein aktiver Befall ✅</p>`);
+  if (done.length) o += `<details${done.some(x => x.id === S.focus || x.id === S.bf) ? " open" : ""} style="margin-top:10px"><summary class="meta" style="cursor:pointer">Beseitigte Befälle (${done.length})</summary><div style="margin-top:8px">${done.map(x => S.bf === x.id ? bfForm(x) : bfCard(x)).join("")}</div></details>`;
+  o += `</div>`;
+  $("dp").innerHTML = o;
+  if (S.focus) { const el = $("bf_" + S.focus); S.focus = null; if (el) { el.scrollIntoView({block:"center"}); el.style.outline = "2px solid var(--pr)"; } }
+}
+
 /* ---------- Übersicht ---------- */
 function openTicket(id) { const t = db.tickets.find(x => x.id === id); if (!t) return; S.mod = hid(t) ? "plans" : "tickets"; if (!hid(t) && t.status === "erledigt") S.tv = "erledigt"; selTicket(id); }
 function openAny(mod, id) {
@@ -1004,13 +1094,14 @@ function openAny(mod, id) {
   if (mod === "tickets") return openTicket(id);
   if (mod === "plans") { S.mod = "plans"; return selPlan(id); }
   if (mod === "reinig") { S.focus = id; return go("reinig"); }
+  if (mod === "hygiene") { S.focus = id; return go("hygiene"); }
   go(mod, {k:"item", id: id});
 }
 function renderHome() {
   const n = today(), akt = db.tickets.filter(t => t.status !== "erledigt" && !hid(t));
   const late = akt.filter(t => t.due && t.due < n), dr = akt.filter(t => t.prio === "dringend");
   const dw = dueWartung(), sc = db.schul.filter(x => x.d >= n).sort(MODS.schul.sort);
-  const pf = db.pruef.filter(x => MODS.pruef.flag(x)), ro = db.reklam.filter(rkOpen).sort(rkSort);
+  const bo = db.befall.filter(bfOpen).sort(bfSort), lw = hLast(hObj()), ro = db.reklam.filter(rkOpen).sort(rkSort);
   const kpi = (v, l, m, bad) => `<div class="kpi" onclick="go('${m}')"><div class="big" style="${bad && v ? "color:var(--bad)" : ""}">${v}</div><small>${l}</small></div>`;
   const li = (t, s, on) => `<div class="li" onclick="${on}"><div class="t">${t}</div><div class="meta">${s}</div></div>`;
   const card = (h, body) => `<div class="card"><h3>${h}</h3>${body}</div>`;
@@ -1018,9 +1109,9 @@ function renderHome() {
   $("dp").innerHTML = `<div class="dh"><h2>🏠 Übersicht</h2></div>
   <div class="toprow">
   ${ro.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
-  ${card("✅ Prüfungen fällig", pf.map(x => li(esc(x.t), esc(MODS.pruef.sub(x).filter(Boolean).join(" · ")), `openAny('pruef','${x.id}')`)).join("") || `<div class="meta">Alles geprüft.</div>`)}
+  ${bo.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🐀 Aktive Befälle – Matuszak Hygiene (${bo.length})</h3>${bo.map(x => li(`Werk ${esc(x.w)} – ${esc(bfTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "behandlung" ? "bearbeitung" : "offen"}">${BF_ST[x.st] || "Aktiver Befall"}</span>`, `openAny('hygiene','${x.id}')`)).join("")}<div class="meta">Letzte Wartung: ${lw ? fd(lw) : "–"}</div></div>` : `<div class="card"><h3 style="margin:0">🐀 Befall Matuszak Hygiene: <span style="color:var(--ok)">kein aktiver Befall ✅</span></h3><div class="meta" style="margin-bottom:0">Letzte Wartung: ${lw ? fd(lw) : "noch nicht eingetragen"}</div></div>`}
   </div>
-  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(pf.length, "Prüfungen fällig", "pruef", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
+  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(bo.length, "aktive Befälle", "hygiene", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
   <div class="cards">
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
@@ -1038,6 +1129,9 @@ function globalSearch(q) {
   db.plans.forEach(p => { if (([p.title, "werk " + p.werk].concat((p.log || []).map(x => x.e + " " + x.r)).join(" ")).toLowerCase().includes(q)) out.push({m:"plans", id:p.id, ic:"🔁", t:p.title, s:`Wartungsplan · ${INT[p.int]}`}); });
   const ru = rObj();
   if (ru && [Object.values(ru.k || {}), Object.values(ru.b || {})].flat().join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:"reinig", ic:"🧽", t:"Unterhaltsreinigung", s:"Kontakt & Bestand"});
+  const hy = hObj();
+  if (hy && [Object.values(hy.k || {}), (hy.wl || []).map(x => x.n)].flat().join(" ").toLowerCase().includes(q)) out.push({m:"hygiene", id:"hygiene", ic:"🐀", t:"Matuszak Hygiene", s:"Kontakt & Wartung"});
+  db.befall.forEach(x => { if ([x.t, x.von, x.ma, x.s, x.o, "werk " + x.w].join(" ").toLowerCase().includes(q)) out.push({m:"hygiene", id:x.id, ic:"🐀", t:"Befall: " + bfTitle(x), s:(BF_ST[x.st] || "Aktiv") + " · Werk " + x.w}); });
   db.reklam.forEach(x => { if ([x.t, x.von, x.ma, "werk " + x.w].join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:x.id, ic:"🧽", t:"Reklamation: " + rkTitle(x), s:(RK_ST[x.st] || "Offen") + " · Werk " + x.w}); });
   GEN.forEach(m => db[m].forEach(x => { if (itemText(m, x).includes(q)) out.push({m: m, id: x.id, ic: MODS[m].ic, t: MODS[m].title(x), s: MODS[m].t + " · " + [].concat(MODS[m].sub(x)).filter(Boolean).join(" · ")}); }));
   box.innerHTML = out.slice(0, 40).map(r => `<div class="r" onclick="openAny('${r.m}','${r.id}')">${r.ic} <b>${esc(r.t)}</b><br><small>${esc(r.s)}</small></div>`).join("") || `<div class="r"><small>Nichts gefunden.</small></div>`;
