@@ -35,12 +35,14 @@ h3{margin:18px 0 6px;font-size:15px}
 #gres small{color:var(--mu)}
 .tl{background:none;border:0;color:#c5d6e4;text-decoration:underline;font-weight:400;font-size:13.5px;padding:4px 6px;margin:0}
 #spacer{flex:0}
-#app{display:grid;grid-template-columns:230px 390px 1fr;height:calc(100vh - 56px)}
-#app.full{grid-template-columns:230px 1fr}
+#app{display:grid;grid-template-columns:255px 390px 1fr;height:calc(100vh - 56px)}
+#app.full{grid-template-columns:255px 1fr}
 #app.full #lp{display:none}
-#nav{overflow:auto;background:var(--card);border-right:1px solid var(--bd);padding:8px 8px 30px}
-#nav .gh{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:14px 8px 4px;font-weight:700}
-#nav button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;color:var(--tx);font-weight:500;margin:1px 0;padding:8px 10px}
+#nav{overflow:auto;background:var(--card);border-right:1px solid var(--bd);padding:14px 10px 40px}
+#nav .gh{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:26px 8px 8px;font-weight:700}
+#nav .gh:first-child{margin-top:4px}
+#nav button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;color:var(--tx);font-weight:500;margin:3px 0;padding:12px 12px}
+#nav button>span:first-child{width:26px;text-align:center;flex:none;font-size:17px}
 #nav button:hover{background:var(--sec)}
 #nav button.on{background:var(--pr);color:#fff;font-weight:700}
 #nav button .n{margin-left:auto;font-size:12px;opacity:.75}
@@ -67,6 +69,8 @@ h3{margin:18px 0 6px;font-size:15px}
 .grid .w{grid-column:1/-1}
 .kv{margin-bottom:10px}.kv .k{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu);font-weight:700}.kv .v{white-space:pre-wrap;overflow-wrap:anywhere}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+.toprow{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-bottom:14px}
+.toprow .card{margin:0}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
 .card h3{margin:0 0 8px}
 .big{font-size:30px;font-weight:800;line-height:1}
@@ -981,13 +985,15 @@ function renderHome() {
   const card = (h, body) => `<div class="card"><h3>${h}</h3>${body}</div>`;
   const top = akt.slice().sort((a, b) => (PRO[a.prio] - PRO[b.prio]) || String(a.due || "9").localeCompare(String(b.due || "9"))).slice(0, 8);
   $("dp").innerHTML = `<div class="dh"><h2>🏠 Übersicht</h2></div>
-  ${ro.length ? `<div class="card" style="border:2px solid var(--bad);margin-bottom:14px"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card" style="margin-bottom:14px"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
+  <div class="toprow">
+  ${ro.length ? `<div class="card" style="border:2px solid var(--bad)"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
+  ${card("✅ Prüfungen fällig", pf.map(x => li(esc(x.t), esc(MODS.pruef.sub(x).filter(Boolean).join(" · ")), `openAny('pruef','${x.id}')`)).join("") || `<div class="meta">Alles geprüft.</div>`)}
+  </div>
   <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(pf.length, "Prüfungen fällig", "pruef", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
   <div class="cards">
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
   ${card("🎓 Nächste Schulungen", sc.slice(0, 6).map(x => li(esc(x.t), esc([fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a].filter(Boolean).join(" · ")), `openAny('schul','${x.id}')`)).join("") || `<div class="meta">Keine Termine eingetragen.</div>`)}
-  ${card("✅ Prüfungen fällig", pf.map(x => li(esc(x.t), esc(MODS.pruef.sub(x).filter(Boolean).join(" · ")), `openAny('pruef','${x.id}')`)).join("") || `<div class="meta">Alles geprüft.</div>`)}
   </div>`;
 }
 
