@@ -199,7 +199,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17b (Unterhaltsreinigung, ohne Zähler/Lager)";
+const VERSION = "2026-10-17c (Wartungspläne mit Ereignissen & Ergebnissen)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -592,7 +592,7 @@ const NAV = [
 
 /* ---------- Zustand & Rahmen ---------- */
 const S = {mod:"home", sel:null, edit:false, q:{}, tv:"aktiv", tw:"", tp:"", ts:""};
-function go(mod, sel) { resetEd(); S.re = null; S.rk = null; S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
+function go(mod, sel) { resetEd(); S.logEdit = null; S.re = null; S.rk = null; S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
 function renderAll(force) { renderNav(); renderList(); if (force || !S.edit) renderDetail(); }
 
 function count(mod) {
@@ -844,11 +844,11 @@ function renderPlanList() {
   const due = all.filter(t => !t.due || t.due <= l), later = all.filter(t => t.due && t.due > l);
   const trow = t => { const on = S.sel && S.sel.k === "ticket" && S.sel.id === t.id; return `<div class="row${on ? " on" : ""}" onclick="selTicket('${t.id}')"><div class="t">#${t.no} ${esc(t.title)}</div><div style="margin:3px 0"><span class="badge s-${t.status}">${ST[t.status]}</span></div><div class="meta">Werk ${t.werk} · ${t.due && t.due < today() ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}</div></div>`; };
   $("lp").innerHTML = `<div class="lh"><b style="flex:1">Pläne (${db.plans.length})</b><button onclick="newPlan()">＋ Neuer Plan</button></div>` +
-    db.plans.map(p => { const on = S.sel && S.sel.k === "plan" && S.sel.id === p.id; return `<div class="row${on ? " on" : ""}" onclick="selPlan('${p.id}')"><div class="t">${esc(p.title)}</div><div class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</div></div>`; }).join("") +
+    db.plans.map(p => { const on = S.sel && S.sel.k === "plan" && S.sel.id === p.id; return `<div class="row${on ? " on" : ""}" onclick="selPlan('${p.id}')"><div class="t">${esc(p.title)}</div><div class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</div>${(p.log || []).length ? `<div class="meta">${p.log.length} Einträge · zuletzt ${fd(p.log.map(x => x.d).sort().pop())}</div>` : ""}</div>`; }).join("") +
     `<div class="gh2">Fällige Wartungen (${due.length})</div>${due.map(trow).join("") || `<div class="meta">Aktuell ist nichts fällig.</div>`}` +
     (later.length ? `<div class="gh2">Vorgemerkt – noch nicht fällig (${later.length})</div>${later.map(trow).join("")}` : "");
 }
-function selPlan(id) { resetEd(); S.sel = {k:"plan", id: id}; S.edit = true; renderAll(true); }
+function selPlan(id) { resetEd(); S.logEdit = null; S.sel = {k:"plan", id: id}; S.edit = true; renderAll(true); }
 function newPlan() { resetEd(); S.sel = {k:"plan", id:""}; S.edit = true; renderAll(true); setTimeout(() => $("pf_title") && $("pf_title").focus(), 0); }
 function renderPlanDetail() {
   const dp = $("dp");
@@ -858,7 +858,35 @@ function renderPlanDetail() {
   <div class="grid"><div class="w"><label>Titel *</label><input id="pf_title" value="${esc(v.title)}" placeholder="z. B. Legionellenprobe"></div>
   <div><label>Werk</label><select id="pf_werk">${opts(WERKE, v.werk)}</select></div><div><label>Priorität</label><select id="pf_prio">${opts(PR, v.prio)}</select></div>
   <div><label>Intervall</label><select id="pf_int">${opts(INT, v.int)}</select></div><div><label>${p ? "Nächste Fälligkeit" : "Erste Fälligkeit"}</label><input id="pf_next" type="date" value="${esc(v.next)}"></div></div>
-  <p class="meta">Bereits erzeugte Tickets bleiben erhalten, wenn du einen Plan löschst.</p>`;
+  <p class="meta">Bereits erzeugte Tickets bleiben erhalten, wenn du einen Plan löschst.</p>
+  ${p ? `<div id="pl_log">${planLogHtml(p)}</div>` : `<p class="meta">Ereignisse und Ergebnisse kannst du eintragen, sobald der Plan gespeichert ist.</p>`}`;
+}
+/* Ereignisse & Ergebnisse je Wartungsplan */
+function planLogHtml(p) {
+  const l = (p.log || []).slice().sort((a, b) => String(b.d).localeCompare(String(a.d)) || String(b.id).localeCompare(String(a.id)));
+  const ed = (S.logEdit && l.find(x => x.id === S.logEdit)) || {d: today(), e: "", r: ""};
+  const ts = db.tickets.filter(t => t.plan === p.id).sort((a, b) => String(b.due || "").localeCompare(String(a.due || "")));
+  return `<h3>Ereignisse &amp; Ergebnisse (${l.length})</h3>
+  <div class="grid"><div><label for="pl_d">Datum</label><input id="pl_d" type="date" value="${esc(ed.d)}"></div>
+  <div><label for="pl_e">Ereignis</label><input id="pl_e" value="${esc(ed.e)}" placeholder="z. B. Probenahme Werk 2 durchgeführt"></div>
+  <div class="w"><label for="pl_r">Ergebnis</label><textarea id="pl_r" rows="3" placeholder="z. B. ohne Befund / Messwert / Teil getauscht">${esc(ed.r)}</textarea></div></div>
+  <div class="bar" style="margin-top:0"><button onclick="plLogSave('${p.id}')">${S.logEdit ? "✔ Änderung übernehmen" : "＋ Eintragen"}</button>${S.logEdit ? `<button class="sec" onclick="plLogEdit('${p.id}','')">Abbrechen</button>` : ""}</div>
+  ${l.length ? `<table class="t" style="margin-top:12px"><tr><th>Datum</th><th>Ereignis</th><th>Ergebnis</th><th></th></tr>${l.map(x => `<tr><td style="white-space:nowrap">${fd(x.d)}</td><td>${esc(x.e)}</td><td style="white-space:pre-wrap">${esc(x.r)}</td><td style="white-space:nowrap"><b style="cursor:pointer" title="Bearbeiten" onclick="plLogEdit('${p.id}','${x.id}')">✎</b> <b style="cursor:pointer" title="Löschen" onclick="plLogDel('${p.id}','${x.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Einträge.</p>`}
+  ${ts.length ? `<h3>Erzeugte Wartungen (${ts.length})</h3><table class="t">${ts.map(t => `<tr style="cursor:pointer" onclick="openTicket('${t.id}')"><td>#${t.no}</td><td>fällig ${fd(t.due)}</td><td><span class="badge s-${t.status}">${ST[t.status]}</span></td></tr>`).join("")}</table>` : ""}`;
+}
+function plLogRedraw(id) { const p = db.plans.find(x => x.id === id), el = $("pl_log"); if (p && el) el.innerHTML = planLogHtml(p); }
+function plLogEdit(id, eid) { S.logEdit = eid || null; plLogRedraw(id); const f = $("pl_e"); if (f && eid) f.focus(); }
+function plLogSave(id) {
+  const p = db.plans.find(x => x.id === id); if (!p) return;
+  const e = $("pl_e").value.trim(), r = $("pl_r").value.trim(), d = $("pl_d").value || today();
+  if (!e && !r) { alert("Bitte Ereignis oder Ergebnis eintragen."); $("pl_e").focus(); return; }
+  const log = (p.log || []).slice(), i = S.logEdit ? log.findIndex(x => x.id === S.logEdit) : -1;
+  if (i >= 0) log[i] = Object.assign({}, log[i], {d: d, e: e, r: r}); else log.push({id: uid(), d: d, e: e, r: r});
+  p.log = log; S.logEdit = null; save(); toast("Eingetragen ✓"); plLogRedraw(id);
+}
+function plLogDel(id, eid) {
+  const p = db.plans.find(x => x.id === id); if (!p || !confirm("Diesen Eintrag löschen?")) return;
+  p.log = (p.log || []).filter(x => x.id !== eid); if (S.logEdit === eid) S.logEdit = null; save(); plLogRedraw(id);
 }
 function savePlan() {
   const title = $("pf_title").value.trim();
@@ -1004,7 +1032,7 @@ function globalSearch(q) {
   if (q.length < 2) { box.style.display = "none"; return; }
   const out = [];
   db.tickets.forEach(t => { if (ticketText(t).includes(q)) out.push({m:"tickets", id:t.id, ic:"🎫", t:`#${t.no} ${t.title}`, s:`${ST[t.status]} · Werk ${t.werk}`}); });
-  db.plans.forEach(p => { if ((p.title + " werk " + p.werk).toLowerCase().includes(q)) out.push({m:"plans", id:p.id, ic:"🔁", t:p.title, s:`Wartungsplan · ${INT[p.int]}`}); });
+  db.plans.forEach(p => { if (([p.title, "werk " + p.werk].concat((p.log || []).map(x => x.e + " " + x.r)).join(" ")).toLowerCase().includes(q)) out.push({m:"plans", id:p.id, ic:"🔁", t:p.title, s:`Wartungsplan · ${INT[p.int]}`}); });
   const ru = rObj();
   if (ru && [Object.values(ru.k || {}), Object.values(ru.b || {})].flat().join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:"reinig", ic:"🧽", t:"Unterhaltsreinigung", s:"Kontakt & Bestand"});
   db.reklam.forEach(x => { if ([x.t, x.von, x.ma, "werk " + x.w].join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:x.id, ic:"🧽", t:"Reklamation: " + rkTitle(x), s:(RK_ST[x.st] || "Offen") + " · Werk " + x.w}); });
