@@ -167,6 +167,8 @@ body.locked #top,body.locked #app{visibility:hidden}
   <input id="file" type="file" accept=".json" hidden onchange="importFile(event)">
   <button class="sec" onclick="importFromTicketsystem()" style="width:100%;margin:4px 0">Daten aus dem Ticketsystem übernehmen (gleicher Browser)</button>
   <button class="sec" onclick="if(confirm('Beim nächsten Start alle Daten komplett vom Server laden?')){resetSince();location.reload()}" style="width:100%;margin:4px 0">Sync komplett neu laden</button>
+  <label for="mailmode">E-Mail-Links öffnen mit</label>
+  <select id="mailmode" onchange="setMailMode(this.value)"><option value="web">Outlook im Web (Firmenkonto, outlook.office.com)</option><option value="live">Outlook.com (privat)</option><option value="mailto">Standard-Mailprogramm (mailto)</option></select>
   <button class="sec" onclick="openPin()" style="width:100%;margin:4px 0">🔒 PIN-Sperre einrichten / ändern / ausschalten</button>
   <button class="sec" onclick="archiveOld()" style="width:100%;margin:4px 0">Alte erledigte Tickets archivieren (älter als 1 Jahr)</button>
   <p class="meta" id="verInfo"></p>
@@ -203,7 +205,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17o (Mett 1 bis 6 kg)";
+const VERSION = "2026-10-17p (Mail über Outlook Web)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -215,10 +217,25 @@ const opts = (o, sel) => Object.keys(o).map(k => `<option value="${esc(k)}"${Str
 const toast = m => { const t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", 1800); };
 const showImg = src => { $("lbi").src = src; $("lb").style.display = "flex"; };
 
+/* E-Mail: standardmäßig Outlook im Web (mailto funktioniert auf dem Firmen-PC nicht) */
+const MAILMODE = "petersMailMode";
+const mailMode = () => { try { return localStorage.getItem(MAILMODE) || "web"; } catch (e) { return "web"; } };
+function mailUrl(to, subject, body) {
+  const q = [];
+  if (subject) q.push("subject=" + encodeURIComponent(subject));
+  if (body) q.push("body=" + encodeURIComponent(body));
+  const m = mailMode();
+  if (m === "mailto") return "mailto:" + (to || "") + (q.length ? "?" + q.join("&") : "");
+  const host = m === "live" ? "https://outlook.live.com" : "https://outlook.office.com";
+  return host + "/mail/deeplink/compose?" + ["to=" + encodeURIComponent(to || "")].concat(q).join("&");
+}
+function openMail(to, subject, body) { const u = mailUrl(to, subject, body); if (mailMode() === "mailto") location.href = u; else window.open(u, "_blank", "noopener"); }
+function setMailMode(v) { try { localStorage.setItem(MAILMODE, v); } catch (e) {} toast("Gespeichert ✓"); renderAll(true); }
+
 /* Mail- und Telefon-Links (Text wird vorher escaped) */
 function linkify(v) {
   return esc(v)
-    .replace(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, m => `<a href="mailto:${m}">${m}</a>`)
+    .replace(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g, m => `<a href="#" onclick="openMail('${m}');return false">${m}</a>`)
     .replace(/(^|[\s:(,;])((?:\+|00)?\d[\d ()\/\-]{6,}\d)/g, (all, pre, num) => {
       const d = num.replace(/[^\d+]/g, "");
       return d.replace(/\D/g, "").length >= 6 ? `${pre}<a href="tel:${d}">${num}</a>` : all;
@@ -358,7 +375,7 @@ async function mailDoc(id, subject) {
   const url = URL.createObjectURL(file), a = document.createElement("a");
   a.href = url; a.download = meta.n; a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
   alert("Die Datei wurde gespeichert. Der E-Mail-Entwurf öffnet sich jetzt, bitte die Datei dort als Anhang hinzufügen.");
-  location.href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(subject);
+  openMail("", subject, subject);
 }
 const filesView = (x, subj) => (x.files || []).length ? `<div class="kv"><div class="k">Dokumente</div>${x.files.map(f => `<span class="chip">📎 <a href="#" onclick="openDoc('${f.id}');return false">${esc(f.n)}</a> <b onclick="mailDoc('${f.id}','${esc(subj).replace(/'/g, "")}')" title="Per E-Mail weiterleiten">✉️</b></span>`).join("")}</div>` : "";
 const photosView = x => (x.photos || []).length ? `<div class="thumbs">${x.photos.map(p => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt="Foto"></span>`).join("")}</div>` : "";
@@ -1185,7 +1202,7 @@ document.addEventListener("keydown", e => {
 document.querySelectorAll(".modal").forEach(m => m.addEventListener("mousedown", e => { if (e.target === m) m.style.display = "none"; }));
 
 /* ---------- Backup / Import ---------- */
-function openSys() { $("verInfo").textContent = "Version " + VERSION; $("sys").style.display = "flex"; }
+function openSys() { $("mailmode").value = mailMode(); $("verInfo").textContent = "Version " + VERSION; $("sys").style.display = "flex"; }
 function backupJSON() { saveBlob(new Blob([JSON.stringify({format:"PetersBetriebshandbuch", ...db}, null, 2)], {type:"application/json"}), "facility-cockpit-backup-" + today() + ".json"); }
 function mergeDb(d) {
   if (Array.isArray(d)) d = {tickets: d};
