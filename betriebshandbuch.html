@@ -40,10 +40,10 @@ h3{margin:18px 0 6px;font-size:15px}
 #app{display:grid;grid-template-columns:255px 390px 1fr;height:calc(100vh - 56px)}
 #app.full{grid-template-columns:255px 1fr}
 #app.full #lp{display:none}
-#nav{overflow:auto;background:var(--card);border-right:1px solid var(--bd);padding:14px 10px 40px}
-#nav .gh{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:26px 8px 8px;font-weight:700}
+#nav{overflow:auto;background:var(--card);border-right:1px solid var(--bd);padding:10px 10px 24px}
+#nav .gh{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:14px 8px 3px;font-weight:700}
 #nav .gh:first-child{margin-top:4px}
-#nav button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;color:var(--tx);font-weight:500;margin:3px 0;padding:12px 12px}
+#nav button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;color:var(--tx);font-weight:500;margin:1px 0;padding:8px 12px}
 #nav button>span:first-child{width:26px;text-align:center;flex:none;font-size:17px}
 #nav button:hover{background:var(--sec)}
 #nav button.on{background:var(--pr);color:#fff;font-weight:700}
@@ -202,7 +202,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17i (Einkauf: Fleischwurst, Mett)";
+const VERSION = "2026-10-17m (Einkauf-Signal)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -887,6 +887,7 @@ function renderEinkauf() {
   const e = eObj() || {};
   $("dp").innerHTML = `<div class="dh"><h2>🛒 Einkauf</h2></div>
     <p class="meta" style="margin-top:0">Hier einfach eintragen, was eingekauft wurde oder noch besorgt werden muss.${e.ed ? " Zuletzt gespeichert: " + fd(e.ed) + "." : ""}</p>
+    <label style="display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:12px 14px;background:var(--card);border:2px solid var(--pr);border-radius:12px;font-weight:700;font-size:16px;cursor:pointer"><input type="checkbox" id="ek_ak" style="width:22px;height:22px;margin:0"${e.ak ? " checked" : ""}> 🔔 Einkauf aktiv – es muss eingekauft werden</label>
     <div class="grid" style="max-width:560px;margin-bottom:12px">
       <div><label for="ek_fw">🌭 Fleischwurst (Stück)</label><select id="ek_fw"><option value="">–</option>${[1,2,3,4,5,6].map(n => `<option value="${n}"${String(e.fw) === String(n) ? " selected" : ""}>${n} Stück</option>`).join("")}</select></div>
       <div><label for="ek_mt">🥩 Mett (Kilo)</label><select id="ek_mt"><option value="">–</option>${[1,2,3,4].map(n => `<option value="${n}"${String(e.mt) === String(n) ? " selected" : ""}>${n} kg</option>`).join("")}</select></div>
@@ -895,8 +896,19 @@ function renderEinkauf() {
     <textarea id="ek_t" rows="18" style="width:100%;min-height:40vh;font-size:16px;line-height:1.5" placeholder="z. B. 17.10. Leuchtmittel LED 20 Stück, Firma XY, 48 €">${esc(e.t || "")}</textarea>
     <div class="bar"><button onclick="ekSave()">💾 Speichern</button><button class="sec" onclick="renderEinkauf()">↩ Zurücksetzen</button></div>`;
 }
+const ekActive = () => { const e = eObj(); return !!(e && e.ak); };
+function ekCard() {
+  return `<div class="card" style="border:2px solid var(--pr)"><h3>🛒 Einkauf: <span style="color:var(--bad)">muss eingekauft werden</span></h3><div class="bar"><button class="sm" onclick="ekDone()">✅ Erledigt</button><button class="sec sm" onclick="go('einkauf')">✏️ Öffnen</button></div></div>`;
+}
+function ekDone() {
+  const old = eObj(); if (!old || !confirm("Einkauf erledigt? Das Signal wird ausgeschaltet, Fleischwurst, Mett und Notizen werden geleert.")) return;
+  const snap = JSON.stringify(db), r = Object.assign({}, old, {t: "", fw: "", mt: "", ak: "", ed: today()});
+  db.einkauf[db.einkauf.indexOf(old)] = r;
+  if (!save()) { db = JSON.parse(snap); return; }
+  toast("Einkauf erledigt ✓"); renderAll(true);
+}
 function ekSave() {
-  const old = eObj(), r = Object.assign({}, old || {id:"einkauf"}, {t: $("ek_t").value, fw: $("ek_fw").value, mt: $("ek_mt").value, ed: today()});
+  const old = eObj(), r = Object.assign({}, old || {id:"einkauf"}, {t: $("ek_t").value, fw: $("ek_fw").value, mt: $("ek_mt").value, ak: $("ek_ak").checked ? "1" : "", ed: today()});
   const snap = JSON.stringify(db);
   if (old) db.einkauf[db.einkauf.indexOf(old)] = r; else db.einkauf.push(r);
   if (!save()) { db = JSON.parse(snap); return; }
@@ -1141,6 +1153,7 @@ function renderHome() {
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
   ${card("🎓 Nächste Schulungen", sc.slice(0, 6).map(x => li(esc(x.t), esc([fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a].filter(Boolean).join(" · ")), `openAny('schul','${x.id}')`)).join("") || `<div class="meta">Keine Termine eingetragen.</div>`)}
+  ${ekActive() ? ekCard() : ""}
   </div>`;
 }
 
