@@ -195,7 +195,7 @@ body.locked #top,body.locked #app{visibility:hidden}
 <input id="dofile" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
 <script>
 "use strict";
-const VERSION = "2026-10-17 (PIN-Sperre)";
+const VERSION = "2026-10-17b (Unterhaltsreinigung, ohne Zähler/Lager)";
 const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fd = s => s ? String(s).split("-").reverse().join(".") : "";
@@ -228,9 +228,9 @@ const PLAN_LEAD_DAYS = 7;
 const K_TICKET = ["title","werk","prio","status","from","mail","due","desc","notes"];
 
 /* ---------- Daten ---------- */
-const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], lager:[], zaehler:[], pruef:[]});
+const emptyDb = () => ({next:1, tickets:[], plans:[], rooms:[], schul:[], ent:[], geraete:[], absperr:[], schluessel:[], firmen:[], pruef:[], reinig:[], reklam:[]});
 const LISTS = Object.keys(emptyDb()).filter(k => k !== "next");
-const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", l:"lager", z:"zaehler", c:"pruef"};
+const KIND = {t:"tickets", p:"plans", r:"rooms", s:"schul", e:"ent", g:"geraete", a:"absperr", k:"schluessel", f:"firmen", c:"pruef", u:"reinig", x:"reklam"};
 const SHARED = new Set(["t","p","r","s","e"]);     // liegen im selben Firebase-Ordner wie das Ticketsystem
 const kindOf = list => Object.keys(KIND).find(k => KIND[k] === list);
 let db = emptyDb();
@@ -377,7 +377,7 @@ function syncLocal() {
     const h = hs(JSON.stringify(x)), m = meta[x.id];
     if (!m || m.h !== h || m.del) meta[x.id] = {h: h, u: Date.now(), p: 1, k: k};
   });
-  Object.keys(meta).forEach(id => { if (!seen.has(id) && !meta[id].del) meta[id] = {h: 0, u: Date.now(), p: 1, k: meta[id].k, del: true}; });
+  Object.keys(meta).forEach(id => { if (!seen.has(id) && !meta[id].del && KIND[meta[id].k]) meta[id] = {h: 0, u: Date.now(), p: 1, k: meta[id].k, del: true}; });
   saveMeta();
   pushPending();
 }
@@ -543,6 +543,7 @@ const dueWartung = () => { const l = leadLimit(); return db.tickets.filter(t => 
 const ART = ["Wasser", "Gas", "Strom", "Heizung", "Druckluft", "Lüftung", "Sonstiges"];
 const MODS = {
   home:    {ic:"🏠", t:"Übersicht"},
+  reinig:  {ic:"🧽", t:"Unterhaltsreinigung"},
   tickets: {ic:"🎫", t:"Tickets"},
   plans:   {ic:"🔁", t:"Wartungspläne"},
   schul: {ic:"🎓", t:"Schulungstermine", one:"Schulung", nophoto:1,
@@ -575,44 +576,33 @@ const MODS = {
     title:x => x.t,
     sub:x => { const nd = pruefNext(x); return [x.i ? INT[x.i] : "", nd === "–" ? "" : nd === "nie" ? "noch nie geprüft" : "nächste: " + fd(nd)]; },
     flag:x => { const nd = pruefNext(x); return (nd === "nie" && x.i) || (nd !== "–" && nd !== "nie" && nd < today()) ? "⚠️ fällig" : ""; },
-    view:x => pruefView(x)},
-  zaehler: {ic:"📈", t:"Zählerstände", one:"Zähler", nodocs:1,
-    fields:[{k:"n",l:"Zähler",req:1,w:1,ph:"z. B. Wasserzähler Werk 2"},{k:"e",l:"Einheit",ph:"m³ / kWh"},{k:"w",l:"Werk",type:"werk"},{k:"s",l:"Standort / Zählernummer",w:1},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
-    title:x => x.n,
-    sub:x => { const v = zaeSorted(x), l = v[v.length - 1]; return [l ? fd(l.d) + ": " + l.w + " " + (x.e || "") : "noch kein Wert", x.w ? "Werk " + x.w : ""]; },
-    flag:x => { const v = zaeSorted(x), l = v[v.length - 1]; return !l || (Date.now() - new Date(l.d)) / 864e5 > 35 ? "⚠️ Ablesung fällig" : ""; },
-    view:x => zaeView(x)},
-  lager: {ic:"📦", t:"Lager & Ersatzteile", one:"Artikel", nodocs:1,
-    fields:[{k:"n",l:"Bezeichnung",req:1,w:1},{k:"o",l:"Lagerort"},{k:"b",l:"Bestand",type:"num"},{k:"mn",l:"Mindestbestand",type:"num"},{k:"e",l:"Einheit",ph:"Stk"},{k:"l",l:"Lieferant"},{k:"nr",l:"Artikelnummer"},{k:"nt",l:"Notizen",type:"area",w:1,rows:3}],
-    defaults:{e:"Stk", b:"0"},
-    title:x => x.n, sub:x => [(x.b || 0) + " " + (x.e || "") + (x.mn ? " (min. " + x.mn + ")" : ""), x.o],
-    flag:x => x.mn !== "" && x.mn != null && Number(x.b || 0) < Number(x.mn) ? "⚠️ unter Mindestbestand" : "",
-    view:x => `<div class="bar"><b style="align-self:center">Bestand ändern:</b><button class="sec" onclick="lagerAdj('${x.id}',-1)">− 1</button><button class="sec" onclick="lagerAdj('${x.id}',1)">+ 1</button><button class="sec" onclick="lagerAdj('${x.id}',-5)">− 5</button><button class="sec" onclick="lagerAdj('${x.id}',5)">+ 5</button></div>`}
+    view:x => pruefView(x)}
 };
-const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms","pruef","zaehler","lager"];
+const GEN = ["schul","geraete","absperr","schluessel","firmen","ent","rooms","pruef"];
 const NAV = [
   ["", ["home"]],
   ["Aufträge", ["tickets","plans","schul"]],
   ["Anlagen & Wissen", ["geraete","absperr","schluessel","firmen","ent","rooms"]],
-  ["Kontrolle & Verbrauch", ["pruef","zaehler","lager"]]
+  ["Kontrolle & Reinigung", ["pruef","reinig"]]
 ];
 
 /* ---------- Zustand & Rahmen ---------- */
 const S = {mod:"home", sel:null, edit:false, q:{}, tv:"aktiv", tw:"", tp:"", ts:""};
-function go(mod, sel) { resetEd(); S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
+function go(mod, sel) { resetEd(); S.re = null; S.rk = null; S.mod = mod; S.sel = sel || null; S.edit = false; $("gres").style.display = "none"; renderAll(true); }
 function renderAll(force) { renderNav(); renderList(); if (force || !S.edit) renderDetail(); }
 
 function count(mod) {
   if (mod === "tickets") return db.tickets.filter(t => t.status !== "erledigt" && !hid(t)).length;
   if (mod === "plans") return db.plans.length;
+  if (mod === "reinig") return "";
   if (db[mod]) return db[mod].length;
   return "";
 }
 function renderNav() {
-  const warn = {plans: dueWartung().length, pruef: db.pruef.filter(x => MODS.pruef.flag(x)).length, zaehler: db.zaehler.filter(x => MODS.zaehler.flag(x)).length, lager: db.lager.filter(x => MODS.lager.flag(x)).length};
+  const warn = {plans: dueWartung().length, pruef: db.pruef.filter(x => MODS.pruef.flag(x)).length, reinig: db.reklam.filter(rkOpen).length};
   $("nav").innerHTML = NAV.map(([g, ms]) => (g ? `<div class="gh">${g}</div>` : "") + ms.map(m =>
     `<button class="${S.mod === m ? "on" : ""}" onclick="go('${m}')"><span>${MODS[m].ic}</span> ${MODS[m].t}${warn[m] ? `<span class="w">${warn[m]}</span>` : `<span class="n">${count(m)}</span>`}</button>`).join("")).join("");
-  $("app").classList.toggle("full", S.mod === "home");
+  $("app").classList.toggle("full", S.mod === "home" || S.mod === "reinig");
 }
 
 /* ---------- Liste ---------- */
@@ -627,7 +617,7 @@ function rowHtml(mod, x) {
 }
 function renderList() {
   const m = S.mod, lp = $("lp");
-  if (m === "home") { lp.innerHTML = ""; return; }
+  if (m === "home" || m === "reinig") { lp.innerHTML = ""; return; }
   if (m === "tickets") return renderTicketList();
   if (m === "plans") return renderPlanList();
   const M = MODS[m], q = (S.q[m] || "").toLowerCase();
@@ -647,6 +637,7 @@ function cancelEdit() { resetEd(); S.edit = false; if (S.sel && !S.sel.id) S.sel
 function renderDetail() {
   const m = S.mod, dp = $("dp");
   if (m === "home") return renderHome();
+  if (m === "reinig") return renderReinig();
   if (m === "tickets" || (m === "plans" && S.sel && S.sel.k === "ticket")) return renderTicketDetail();
   if (m === "plans") return renderPlanDetail();
   if (!S.sel) { dp.innerHTML = `<div class="empty">Links einen Eintrag wählen oder mit „＋ Neu“ anlegen.</div>`; return; }
@@ -721,12 +712,6 @@ function saveBlob(blob, name) {
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 10000);
 }
-function lagerAdj(id, d) {
-  const x = db.lager.find(y => y.id === id); if (!x) return;
-  x.b = String(Math.max(0, Number(x.b || 0) + d));
-  save(); renderAll(true);
-}
-
 /* Prüflisten */
 const pruefLast = x => (x.l || []).map(l => l.d).sort().pop();
 function pruefNext(x) { const l = pruefLast(x); return x.i ? (l ? addInt(l, x.i) : "nie") : "–"; }
@@ -750,31 +735,6 @@ function pruefDone(id) {
   save(); toast(miss.length ? "Prüfung mit Mängeln gespeichert" : "Prüfung gespeichert ✓"); renderAll(true);
 }
 function pruefDel(id, eid) { const x = db.pruef.find(y => y.id === id); if (!x || !confirm("Diesen Prüfeintrag löschen?")) return; x.l = x.l.filter(e => e.id !== eid); save(); renderAll(true); }
-
-/* Zählerstände */
-const zaeSorted = x => (x.v || []).slice().sort((a, b) => a.d.localeCompare(b.d));
-function zaeView(x) {
-  const v = zaeSorted(x), u = x.e || "";
-  const rows = v.map((r, i) => ({d: r.d, w: r.w, id: r.id, diff: i ? r.w - v[i - 1].w : null})).reverse();
-  let h = `<h3>Neuer Ablesewert</h3><div class="grid" style="grid-template-columns:1fr 1fr auto;align-items:end"><div><label>Datum</label><input id="z_d" type="date" value="${today()}"></div><div><label>Zählerstand ${esc(u)}</label><input id="z_w" type="number" step="any" onkeydown="if(event.key==='Enter')zaeAdd('${x.id}')"></div><div><button onclick="zaeAdd('${x.id}')" style="margin:0 0 10px">＋ Eintragen</button></div></div>`;
-  const diffs = rows.filter(r => r.diff != null).slice(0, 12).reverse();
-  if (diffs.length) {
-    const mx = Math.max(...diffs.map(r => r.diff), 0.0001), bw = 600 / diffs.length;
-    h += `<h3>Verbrauch je Ablesung</h3><svg viewBox="0 0 600 140" style="width:100%;max-width:640px;background:var(--card);border:1px solid var(--bd);border-radius:10px">${diffs.map((r, i) => { const hh = Math.max(2, r.diff / mx * 90); return `<rect x="${i * bw + 4}" y="${112 - hh}" width="${bw - 8}" height="${hh}" rx="3" fill="var(--pr)"/><text x="${i * bw + bw / 2}" y="${106 - hh}" font-size="10" text-anchor="middle" fill="currentColor">${Math.round(r.diff * 100) / 100}</text><text x="${i * bw + bw / 2}" y="130" font-size="9" text-anchor="middle" fill="currentColor">${r.d.slice(5).split("-").reverse().join(".")}</text>`; }).join("")}</svg>`;
-  }
-  h += `<h3>Ablesungen (${rows.length})</h3>` + (rows.length ? `<table class="t"><tr><th>Datum</th><th>Stand</th><th>Verbrauch seit vorher</th><th></th></tr>${rows.map(r => `<tr><td>${fd(r.d)}</td><td>${r.w} ${esc(u)}</td><td>${r.diff == null ? "–" : Math.round(r.diff * 100) / 100 + " " + esc(u)}</td><td><b style="cursor:pointer" onclick="zaeDel('${x.id}','${r.id}')">✕</b></td></tr>`).join("")}</table>` : `<p class="meta">Noch keine Ablesung.</p>`);
-  return h;
-}
-function zaeAdd(id) {
-  const x = db.zaehler.find(y => y.id === id); if (!x) return;
-  const w = parseFloat($("z_w").value), d = $("z_d").value || today();
-  if (isNaN(w)) { alert("Bitte einen Zählerstand eintragen."); $("z_w").focus(); return; }
-  const prev = zaeSorted(x).filter(r => r.d <= d).pop();
-  if (prev && w < prev.w && !confirm("Der Wert ist kleiner als der vorherige (" + prev.w + "). Trotzdem eintragen?")) return;
-  x.v = (x.v || []).concat([{id: uid(), d: d, w: w}]);
-  save(); renderAll(true);
-}
-function zaeDel(id, rid) { const x = db.zaehler.find(y => y.id === id); if (!x || !confirm("Diese Ablesung löschen?")) return; x.v = x.v.filter(r => r.id !== rid); save(); renderAll(true); }
 
 /* ---------- Tickets ---------- */
 const doneAt = t => { const h = (t.history || []).filter(x => x.s === "erledigt"); return h.length ? h[h.length - 1].t : t.created; };
@@ -911,32 +871,123 @@ function delPlan() {
   db.plans = db.plans.filter(x => x.id !== p.id); save(); S.sel = null; S.edit = false; renderAll(true);
 }
 
+/* ---------- Unterhaltsreinigung ---------- */
+const RK_ST = {offen:"Offen", klaerung:"In Klärung", erledigt:"Erledigt"};
+const KONT = [["f","Firma"],["n","Ansprechpartner"],["t","Telefon"],["m","E-Mail"]];
+const BEST = [["hp","Handpapier"],["bt","Blaue Tüten"],["wt","Weiße Tüten"],["tp","Toilettenpapier"],["mo","Mopps"],["rs","Reinigungsmittel Sanitär"],["rb","Reinigungsmittel Boden"],["rg","Reinigungsmittel Glas"]];
+const rObj = () => db.reinig.find(x => x.id === "reinig");
+const rkOpen = x => x.st !== "erledigt";
+const rkSort = (a, b) => String(b.d || "").localeCompare(String(a.d || ""));
+const rkTitle = x => { const t = String(x.t || "").split("\n")[0]; return t.length > 70 ? t.slice(0, 70) + "…" : t; };
+function reEdit(w) { resetEd(); S.rk = null; S.re = w; S.edit = true; renderDetail(); const f = document.querySelector("#dp .card input"); if (f) f.focus(); }
+function reCancel() { resetEd(); S.re = null; S.rk = null; S.edit = false; renderDetail(); }
+function reSave(w) {
+  const old = rObj(), r = old ? JSON.parse(JSON.stringify(old)) : {id:"reinig", k:{}, b:{}, bs:""};
+  if (w === "k") { r.k = {}; KONT.forEach(([c]) => r.k[c] = $("u_" + c).value.trim()); r.k.o = $("u_o").value.trim(); }
+  else { r.b = {}; BEST.forEach(([c]) => r.b[c] = $("u_" + c).value.trim()); r.b.so = $("u_so").value.trim(); r.bs = today(); }
+  const snap = JSON.stringify(db);
+  if (old) db.reinig[db.reinig.indexOf(old)] = r; else db.reinig.push(r);
+  if (!save()) { db = JSON.parse(snap); return; }
+  S.re = null; S.edit = false; toast("Gespeichert ✓"); renderAll(true);
+}
+function rkEdit(id) {
+  const x = db.reklam.find(y => y.id === id); if (!x) return;
+  resetEd(); edPh = (x.photos || []).slice(); S.re = null; S.rk = id; S.edit = true; renderDetail();
+}
+function rkNew() { resetEd(); S.re = null; S.rk = "new"; S.edit = true; renderDetail(); const f = $("rk_t"); if (f) f.focus(); }
+function rkSave() {
+  const t = $("rk_t").value.trim();
+  if (!t) { alert("Bitte eintragen, worum es geht."); $("rk_t").focus(); return; }
+  const old = db.reklam.find(y => y.id === S.rk), x = old ? JSON.parse(JSON.stringify(old)) : {id: uid()};
+  x.w = $("rk_w").value; x.d = $("rk_d").value || today(); x.von = $("rk_v").value.trim(); x.st = $("rk_s").value; x.t = t; x.ma = $("rk_m").value.trim(); x.photos = edPh.slice();
+  if (x.st === "erledigt") x.ed = x.ed || today(); else delete x.ed;
+  const snap = JSON.stringify(db);
+  if (old) db.reklam[db.reklam.indexOf(old)] = x; else db.reklam.push(x);
+  if (!save()) { db = JSON.parse(snap); return; }
+  resetEd(); S.rk = null; S.edit = false; toast("Gespeichert ✓"); renderAll(true);
+}
+function rkSet(id, st) {
+  const x = db.reklam.find(y => y.id === id); if (!x) return;
+  x.st = st; if (st === "erledigt") x.ed = today(); else delete x.ed;
+  save(); renderAll(true);
+}
+function rkDel(id) {
+  const x = db.reklam.find(y => y.id === id);
+  if (!x || !confirm("Diese Reklamation wirklich löschen?")) return;
+  db.reklam = db.reklam.filter(y => y.id !== id); save(); renderAll(true);
+}
+function rkForm(x) {
+  const v = x || {w:"1", d:today(), st:"offen"};
+  return `<div class="card" style="border-color:var(--pr);margin-bottom:10px"><h3>${x ? "Reklamation bearbeiten" : "Neue Reklamation"}</h3><div class="grid">
+    <div><label for="rk_w">Werk</label><select id="rk_w">${opts(WERKE, v.w)}</select></div>
+    <div><label for="rk_d">Datum</label><input id="rk_d" type="date" value="${esc(v.d)}"></div>
+    <div><label for="rk_v">Wer meldet?</label><input id="rk_v" value="${esc(v.von || "")}" placeholder="Name / Abteilung"></div>
+    <div><label for="rk_s">Status</label><select id="rk_s">${opts(RK_ST, v.st)}</select></div>
+    <div class="w"><label for="rk_t">Worum geht es? *</label><textarea id="rk_t" rows="4">${esc(v.t || "")}</textarea></div>
+    <div class="w"><label for="rk_m">Maßnahme / Antwort der Reinigungsfirma</label><textarea id="rk_m" rows="3">${esc(v.ma || "")}</textarea></div></div>
+    ${mediaHtml(true, false)}<div class="bar"><button onclick="rkSave()">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div></div>`;
+}
+function rkCard(x) {
+  const op = rkOpen(x);
+  return `<div class="card" id="rk_${x.id}" style="margin-bottom:10px${op ? ";border-left:4px solid var(--bad)" : ""}">
+    <div class="meta"><span class="badge s-${x.st === "klaerung" ? "bearbeitung" : x.st === "erledigt" ? "erledigt" : "offen"}">${RK_ST[x.st] || "Offen"}</span><b>Werk ${esc(x.w)}</b> · ${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""}${x.ed ? " · erledigt am " + fd(x.ed) : ""}</div>
+    <div style="margin:6px 0;white-space:pre-wrap">${esc(x.t)}</div>
+    ${x.ma ? `<div class="meta" style="white-space:pre-wrap"><b>Maßnahme:</b> ${linkify(x.ma)}</div>` : ""}
+    ${photosView(x)}
+    <div class="bar" style="margin-top:8px"><button class="sec sm" onclick="rkEdit('${x.id}')">✏️ Bearbeiten</button>${op ? `<button class="sec sm" onclick="rkSet('${x.id}','erledigt')">✔ Erledigt</button>` : `<button class="sec sm" onclick="rkSet('${x.id}','offen')">↩ Wieder öffnen</button>`}<button class="sec sm" onclick="rkDel('${x.id}')">🗑️ Löschen</button></div></div>`;
+}
+function renderReinig() {
+  const r = rObj() || {}, k = r.k || {}, b = r.b || {}, fm = (id, l, v, tx) => `<div${tx ? ' class="w"' : ""}><label for="u_${id}">${l}</label>${tx ? `<textarea id="u_${id}" rows="3">${esc(v || "")}</textarea>` : `<input id="u_${id}" value="${esc(v || "")}">`}</div>`;
+  const kv = (l, v, raw) => `<div class="kv"><div class="k">${l}</div><div class="v">${v ? (raw ? v : esc(v)) : "–"}</div></div>`;
+  const open = db.reklam.filter(rkOpen).sort(rkSort), done = db.reklam.filter(x => !rkOpen(x)).sort(rkSort);
+  const head = (t, btn) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px"><h3 style="margin:0">${t}</h3>${btn}</div>`;
+  let h = `<div class="dh"><h2>🧽 Unterhaltsreinigung</h2></div>`;
+  // 1. Kontakt
+  h += `<div class="card" style="margin-bottom:14px">${head("👤 Kontakt", S.re === "k" ? "" : `<button class="sec sm" onclick="reEdit('k')">✏️ Bearbeiten</button>`)}`;
+  if (S.re === "k") h += `<div class="grid">${KONT.map(([c, l]) => fm(c, l, k[c])).join("")}${fm("o", "Vertrag, Reinigungszeiten, Notizen", k.o, 1)}</div><div class="bar"><button onclick="reSave('k')">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div>`;
+  else h += (Object.values(k).some(Boolean)) ? `<div class="grid">${kv("Firma", k.f)}${kv("Ansprechpartner", k.n)}${kv("Telefon", linkify(k.t || ""), 1)}${kv("E-Mail", linkify(k.m || ""), 1)}${k.o ? `<div class="kv w"><div class="k">Vertrag, Reinigungszeiten, Notizen</div><div class="v" style="white-space:pre-wrap">${linkify(k.o)}</div></div>` : ""}</div>` : `<p class="meta">Noch kein Kontakt eingetragen.</p>`;
+  h += `</div>`;
+  // 2. Bestand
+  h += `<div class="card" style="margin-bottom:14px">${head("📦 Bestand Verbrauchsmaterial" + (r.bs ? ` <small class="meta" style="font-weight:400">(Stand ${fd(r.bs)})</small>` : ""), S.re === "b" ? "" : `<button class="sec sm" onclick="reEdit('b')">✏️ Bestand ändern</button>`)}`;
+  if (S.re === "b") h += `<div class="grid">${BEST.map(([c, l]) => fm(c, l, b[c])).join("")}${fm("so", "Sonstiges (freie Eingabe)", b.so, 1)}</div><p class="meta">Freie Eingabe, z. B. „3 Pakete“ oder „fast leer“. Das Datum „Stand“ wird beim Speichern gesetzt.</p><div class="bar"><button onclick="reSave('b')">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div>`;
+  else h += `<div class="grid">${BEST.map(([c, l]) => kv(l, b[c])).join("")}${b.so ? `<div class="kv w"><div class="k">Sonstiges</div><div class="v" style="white-space:pre-wrap">${esc(b.so)}</div></div>` : ""}</div>`;
+  h += `</div>`;
+  // 3. Reklamationen
+  h += `<div class="card">${head(`⚠️ Reklamationen <small class="meta" style="font-weight:400">(${open.length} offen)</small>`, S.rk ? "" : `<button class="sm" onclick="rkNew()">＋ Neue Reklamation</button>`)}`;
+  if (S.rk === "new") h += rkForm(null);
+  h += open.map(x => S.rk === x.id ? rkForm(x) : rkCard(x)).join("") || (S.rk === "new" ? "" : `<p class="meta">Keine offenen Reklamationen ✅</p>`);
+  if (done.length) h += `<details${done.some(x => x.id === S.focus || x.id === S.rk) ? " open" : ""} style="margin-top:10px"><summary class="meta" style="cursor:pointer">Erledigte Reklamationen (${done.length})</summary><div style="margin-top:8px">${done.map(x => S.rk === x.id ? rkForm(x) : rkCard(x)).join("")}</div></details>`;
+  h += `</div>`;
+  $("dp").innerHTML = h;
+  if (S.focus) { const el = $("rk_" + S.focus); S.focus = null; if (el) { el.scrollIntoView({block:"center"}); el.style.outline = "2px solid var(--pr)"; } }
+}
+
 /* ---------- Übersicht ---------- */
 function openTicket(id) { const t = db.tickets.find(x => x.id === id); if (!t) return; S.mod = hid(t) ? "plans" : "tickets"; if (!hid(t) && t.status === "erledigt") S.tv = "erledigt"; selTicket(id); }
 function openAny(mod, id) {
   $("gres").style.display = "none";
   if (mod === "tickets") return openTicket(id);
   if (mod === "plans") { S.mod = "plans"; return selPlan(id); }
+  if (mod === "reinig") { S.focus = id; return go("reinig"); }
   go(mod, {k:"item", id: id});
 }
 function renderHome() {
   const n = today(), akt = db.tickets.filter(t => t.status !== "erledigt" && !hid(t));
   const late = akt.filter(t => t.due && t.due < n), dr = akt.filter(t => t.prio === "dringend");
   const dw = dueWartung(), sc = db.schul.filter(x => x.d >= n).sort(MODS.schul.sort);
-  const pf = db.pruef.filter(x => MODS.pruef.flag(x)), zf = db.zaehler.filter(x => MODS.zaehler.flag(x)), lf = db.lager.filter(x => MODS.lager.flag(x));
+  const pf = db.pruef.filter(x => MODS.pruef.flag(x)), ro = db.reklam.filter(rkOpen).sort(rkSort);
   const kpi = (v, l, m, bad) => `<div class="kpi" onclick="go('${m}')"><div class="big" style="${bad && v ? "color:var(--bad)" : ""}">${v}</div><small>${l}</small></div>`;
   const li = (t, s, on) => `<div class="li" onclick="${on}"><div class="t">${t}</div><div class="meta">${s}</div></div>`;
   const card = (h, body) => `<div class="card"><h3>${h}</h3>${body}</div>`;
   const top = akt.slice().sort((a, b) => (PRO[a.prio] - PRO[b.prio]) || String(a.due || "9").localeCompare(String(b.due || "9"))).slice(0, 8);
   $("dp").innerHTML = `<div class="dh"><h2>🏠 Übersicht</h2></div>
-  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(pf.length, "Prüfungen fällig", "pruef", 1)}${kpi(zf.length, "Ablesungen fällig", "zaehler", 1)}${kpi(lf.length, "Lager unter Minimum", "lager", 1)}</div>
+  ${ro.length ? `<div class="card" style="border:2px solid var(--bad);margin-bottom:14px"><h3>🧽 Offene Reklamationen Unterhaltsreinigung (${ro.length})</h3>${ro.map(x => li(`Werk ${esc(x.w)} – ${esc(rkTitle(x))}`, `${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""} · <span class="badge s-${x.st === "klaerung" ? "bearbeitung" : "offen"}">${RK_ST[x.st] || "Offen"}</span>`, `openAny('reinig','${x.id}')`)).join("")}</div>` : `<div class="card" style="margin-bottom:14px"><h3 style="margin:0">🧽 Reklamationen Unterhaltsreinigung: <span style="color:var(--ok)">keine offen ✅</span></h3></div>`}
+  <div class="kpis">${kpi(akt.length, "aktive Tickets", "tickets")}${kpi(dr.length, "dringend", "tickets", 1)}${kpi(late.length, "überfällig", "tickets", 1)}${kpi(dw.length, "Wartungen fällig", "plans", 1)}${kpi(sc.length, "Schulungen kommend", "schul")}${kpi(pf.length, "Prüfungen fällig", "pruef", 1)}${kpi(ro.length, "offene Reklamationen", "reinig", 1)}</div>
   <div class="cards">
   ${card("🎫 Wichtigste offene Tickets", top.map(t => li(`#${t.no} ${esc(t.title)}`, `<span class="badge pr-${t.prio}">${PR[t.prio]}</span><span class="badge s-${t.status}">${ST[t.status]}</span> Werk ${t.werk}${t.due ? " · " + (t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)) : ""}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Keine offenen Tickets 🎉</div>`)}
   ${card("🔁 Fällige Wartungen", dw.map(t => li(`#${t.no} ${esc(t.title)}`, `Werk ${t.werk} · ${t.due && t.due < n ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}`, `openTicket('${t.id}')`)).join("") || `<div class="meta">Aktuell nichts fällig.</div>`)}
   ${card("🎓 Nächste Schulungen", sc.slice(0, 6).map(x => li(esc(x.t), esc([fd(x.d) + (x.tm ? ", " + x.tm + " Uhr" : ""), x.o, x.a].filter(Boolean).join(" · ")), `openAny('schul','${x.id}')`)).join("") || `<div class="meta">Keine Termine eingetragen.</div>`)}
   ${card("✅ Prüfungen fällig", pf.map(x => li(esc(x.t), esc(MODS.pruef.sub(x).filter(Boolean).join(" · ")), `openAny('pruef','${x.id}')`)).join("") || `<div class="meta">Alles geprüft.</div>`)}
-  ${card("📈 Zähler ablesen", zf.map(x => li(esc(x.n), esc(MODS.zaehler.sub(x).filter(Boolean).join(" · ")), `openAny('zaehler','${x.id}')`)).join("") || `<div class="meta">Alle Zähler aktuell.</div>`)}
-  ${card("📦 Lager – nachbestellen", lf.map(x => li(esc(x.n), esc(MODS.lager.sub(x).filter(Boolean).join(" · ")), `openAny('lager','${x.id}')`)).join("") || `<div class="meta">Bestände ok.</div>`)}
   </div>`;
 }
 
@@ -948,6 +999,9 @@ function globalSearch(q) {
   const out = [];
   db.tickets.forEach(t => { if (ticketText(t).includes(q)) out.push({m:"tickets", id:t.id, ic:"🎫", t:`#${t.no} ${t.title}`, s:`${ST[t.status]} · Werk ${t.werk}`}); });
   db.plans.forEach(p => { if ((p.title + " werk " + p.werk).toLowerCase().includes(q)) out.push({m:"plans", id:p.id, ic:"🔁", t:p.title, s:`Wartungsplan · ${INT[p.int]}`}); });
+  const ru = rObj();
+  if (ru && [Object.values(ru.k || {}), Object.values(ru.b || {})].flat().join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:"reinig", ic:"🧽", t:"Unterhaltsreinigung", s:"Kontakt & Bestand"});
+  db.reklam.forEach(x => { if ([x.t, x.von, x.ma, "werk " + x.w].join(" ").toLowerCase().includes(q)) out.push({m:"reinig", id:x.id, ic:"🧽", t:"Reklamation: " + rkTitle(x), s:(RK_ST[x.st] || "Offen") + " · Werk " + x.w}); });
   GEN.forEach(m => db[m].forEach(x => { if (itemText(m, x).includes(q)) out.push({m: m, id: x.id, ic: MODS[m].ic, t: MODS[m].title(x), s: MODS[m].t + " · " + [].concat(MODS[m].sub(x)).filter(Boolean).join(" · ")}); }));
   box.innerHTML = out.slice(0, 40).map(r => `<div class="r" onclick="openAny('${r.m}','${r.id}')">${r.ic} <b>${esc(r.t)}</b><br><small>${esc(r.s)}</small></div>`).join("") || `<div class="r"><small>Nichts gefunden.</small></div>`;
   box.style.display = "block";
