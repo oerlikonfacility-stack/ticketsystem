@@ -45,8 +45,8 @@ button.del{background:#c0392b}
 .act select{margin:0;flex:2;padding:10px}
 .act button{flex:1;margin:0}
 .fab{z-index:5;line-height:1;font-weight:400;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;font-size:38px;padding:0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-#sheet,#plan,#rooms,#schul,#ent,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
-#sheet .in,#plan .in,#rooms .in,#schul .in,#ent .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+#sheet,#rooms,#reinig,#syncs,#sys{display:none;position:fixed;inset:0;background:var(--bg);overflow:auto;z-index:10}
+#sheet .in,#rooms .in,#reinig .in,#syncs .in,#sys .in{max-width:1100px;margin:auto;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .pi{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0;cursor:pointer}
 .pi span{flex:1;overflow-wrap:anywhere}.pi b{padding:2px 8px;color:var(--mu)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0}
@@ -70,6 +70,7 @@ summary{cursor:pointer;font-weight:600}
 .three button{margin:0;padding:12px 4px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hist{font-size:13px;color:var(--mu);margin:0 0 12px;padding-left:18px}
 label{font-weight:600;font-size:14px}
+button.sm{padding:8px 12px;font-size:14px}
 .foot{display:flex;flex-wrap:wrap;margin-top:18px}
 .foot button{flex:1}
 </style>
@@ -91,12 +92,9 @@ label{font-weight:600;font-size:14px}
   <div class="seg" id="seg"><button data-v="aktiv" onclick="setView('aktiv')">Aktiv</button><button data-v="erledigt" onclick="setView('erledigt')">✅ Erledigt-Archiv</button></div>
   <div class="two" style="margin-bottom:10px">
     <button class="sec" id="roomBtn" onclick="openRooms()" style="margin:0;padding:12px 6px;font-size:15px">🚪 Besprechungsräume</button>
-    <button class="sec" id="schBtn" onclick="openSchul()" style="margin:0;padding:12px 6px;font-size:15px">🎓 Schulungstermine</button>
+    <button class="sec" id="reBtn" onclick="openReinig()" style="margin:0;padding:12px 6px;font-size:15px">🧽 Unterhaltsreinigung</button>
   </div>
-  <div class="two" style="margin-bottom:10px">
-    <button class="sec" id="planBtn" onclick="openPlan()" style="margin:0;padding:12px 6px;font-size:15px">🔁 Aktive Wartungspläne</button>
-    <button class="sec" id="entBtn" onclick="openEnt()" style="margin:0;padding:12px 6px;font-size:15px">♻️ Entsorger</button>
-  </div>
+  <div id="rkNote"></div>
   <div class="filters">
     <select id="fStatus" aria-label="Status"></select>
     <select id="fWerk" aria-label="Werk"></select>
@@ -104,7 +102,7 @@ label{font-weight:600;font-size:14px}
   </div>
   <div id="list"></div>
 
-  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-16k (Entsorger mit Mail-Link)</small></p>
+  <p><small class="meta">Die Tickets liegen nur in diesem Browser auf deinem Gerät. Bitte regelmäßig ein Backup erstellen.<br>Version 2026-10-17a (Unterhaltsreinigung, schlankere Ansicht)</small></p>
 </main>
 
 
@@ -154,19 +152,6 @@ label{font-weight:600;font-size:14px}
   <button class="del" id="delBtn" onclick="delTicket()">Löschen</button>
 </div></div>
 
-<div id="plan"><div class="in">
-  <h2>🔁 Aktive Wartungspläne</h2>
-  <small class="meta">Ist eine Wartung fällig, legt die App beim Öffnen automatisch ein Ticket an.</small>
-  <div id="planList"></div>
-  <h3>Neue wiederkehrende Aufgabe</h3>
-  <input id="p_title" placeholder="z. B. Legionellenprobe">
-  <div class="two"><select id="p_werk"></select><select id="p_prio"></select></div>
-  <select id="p_int"></select>
-  <label for="p_next">Erste Fälligkeit</label>
-  <input id="p_next" type="date">
-  <button onclick="addPlan()">Hinzufügen</button>
-  <button class="sec" onclick="$('plan').style.display='none'">Schließen</button>
-</div></div>
 <div id="rooms"><div class="in">
   <h2>🚪 Besprechungsräume</h2>
   <small class="meta">Format: Name, Werk, Etage – zum Beispiel „Gonzen, Werk 2, Erdgeschoss“.</small>
@@ -177,47 +162,12 @@ label{font-weight:600;font-size:14px}
   <button onclick="addRoom()">Hinzufügen</button>
   <button class="sec" onclick="$('rooms').style.display='none'">Schließen</button>
 </div></div>
-<div id="schul"><div class="in">
-  <h2>🎓 Schulungstermine</h2>
-  <small class="meta">Erinnerung: 1 Stunde vorher (solange die App geöffnet ist) – für sicheres Erinnern „📅 Kalender“ nutzen.</small>
-  <div id="schList" style="margin-top:10px"></div>
-  <h3 id="schT">Neue Schulung</h3>
-  <input id="s_id" type="hidden">
-  <label for="s_t">Was wird geschult? *</label>
-  <input id="s_t" placeholder="z. B. Brandschutzhelfer">
-  <label for="s_o">Ort</label>
-  <input id="s_o" placeholder="z. B. Gonzen, Werk 2, Erdgeschoss">
-  <div class="two">
-    <div><label for="s_d">Datum *</label><input id="s_d" type="date"></div>
-    <div><label for="s_tm">Uhrzeit</label><input id="s_tm" type="time" value="09:00"></div>
-  </div>
-  <label for="s_a">Ausbilder</label>
-  <input id="s_a" placeholder="Name des Ausbilders">
-  <button onclick="saveSchul()">Speichern</button>
-  <button class="sec" onclick="$('schul').style.display='none'">Schließen</button>
+<div id="reinig"><div class="in">
+  <h2>🧽 Unterhaltsreinigung</h2>
+  <div id="reBody"></div>
+  <button class="sec" onclick="closeReinig()">Schließen</button>
 </div></div>
-<div id="ent"><div class="in">
-  <h2>♻️ Entsorger</h2>
-  <small class="meta">Wer holt was ab, wie oft und wo – als Nachschlagewerk für den Betrieb.</small>
-  <input id="e_q" type="search" placeholder="🔎 Suchen (Firma, Material, Werk …)" aria-label="Entsorger suchen" oninput="renderEnt()" style="margin-top:10px">
-  <div id="entList"></div>
-  <h3 id="entT">Neuer Entsorger</h3>
-  <input id="e_id" type="hidden">
-  <label for="e_f">Firma *</label>
-  <input id="e_f" placeholder="z. B. Remondis">
-  <label for="e_m">Was wird abgeholt? (Materialien)</label>
-  <textarea id="e_m" rows="3" placeholder="z. B. Restmüll, Papier, Altöl, Leuchtstoffröhren"></textarea>
-  <label for="e_r">Rhythmus</label>
-  <input id="e_r" placeholder="z. B. jeden 2. Dienstag / nach Abruf / 1× pro Quartal">
-  <label for="e_w">Werk / Abholort</label>
-  <input id="e_w" placeholder="z. B. Werk 2, Hof hinten">
-  <label for="e_k">Kontakt (Ansprechpartner, Telefon, E-Mail)</label>
-  <textarea id="e_k" rows="2" placeholder="z. B. Herr Meier, 0171 1234567, meier@firma.de"></textarea>
-  <label for="e_n">Notizen (Kundennummer, Vertrag, Besonderheiten)</label>
-  <textarea id="e_n" rows="3"></textarea>
-  <button onclick="saveEnt()">Speichern</button>
-  <button class="sec" onclick="$('ent').style.display='none'">Schließen</button>
-</div></div>
+<input id="rkphfile" type="file" accept="image/*" multiple hidden onchange="addRkPhotos(event)">
 <div id="lb" onclick="this.style.display='none'"><img id="lbi" alt="Foto"></div>
 
 <div id="syncs"><div class="in">
@@ -252,7 +202,7 @@ const ST = {offen:"Offen", bearbeitung:"In Bearbeitung", teil:"Teil bestellt", a
 const PR = {dringend:"Dringend", hoch:"Hoch", normal:"Normal", niedrig:"Niedrig"};
 const PO = {dringend:0, hoch:1, normal:2, niedrig:3};
 const K = ["title","werk","prio","status","from","mail","due","desc","notes"];
-let db = {next: 1, tickets: [], plans: [], rooms: [], schul: [], ent: []};
+let db = {next: 1, tickets: [], plans: [], rooms: [], schul: [], ent: [], reinig: [], reklam: []};
 let editPl = [], editPh = [], editPo = [], editFl = [], newFl = [], goneFl = [];
 
 try {
@@ -263,6 +213,8 @@ if (!Array.isArray(db.plans)) db.plans = [];
 if (!Array.isArray(db.rooms)) db.rooms = [];
 if (!Array.isArray(db.schul)) db.schul = [];
 if (!Array.isArray(db.ent)) db.ent = [];
+if (!Array.isArray(db.reinig)) db.reinig = [];
+if (!Array.isArray(db.reklam)) db.reklam = [];
 db.tickets.forEach(t => {
   if (!Array.isArray(t.files)) t.files = [];
   if (!Array.isArray(t.pos)) t.pos = t.po ? [{f: "", n: String(t.po)}] : [];
@@ -324,12 +276,8 @@ function render() {
   const senders = [...new Set(db.tickets.map(t => t.from).filter(Boolean))].sort();
   $("senders").innerHTML = senders.map(s => `<option value="${esc(s)}">`).join("");
 
-  {
-    const lim = leadLimit(), dueN = db.tickets.filter(t => hid(t) && (!t.due || t.due <= lim)).length;
-    $("planBtn").textContent = "🔁 Aktive Wartungspläne (" + db.plans.length + ")" + (dueN ? " · ⚠️ " + dueN + " fällig" : "");
-  }
   $("roomBtn").textContent = "🚪 Besprechungsräume (" + db.rooms.length + ")";
-  $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
+  renderReNote();
   $("list").innerHTML = list.map(t => {
     const isLate = t.due && t.due < today() && t.status !== "erledigt";
     const meta = ["Werk " + t.werk, t.from ? "von " + t.from : "", t.mail ? "Mail " + fd(t.mail) : "",
@@ -392,7 +340,6 @@ function openSheet(id) {
 function closeSheet() {
   newFl.forEach(id => fdel(id)); newFl = []; goneFl = [];
   $("sheet").style.display = "none";
-  if (fromPlan) { fromPlan = false; renderPlan(); openPlan(); }
 }
 
 function saveTicket() {
@@ -565,12 +512,6 @@ function showImg(src) { $("lbi").src = src; $("lb").style.display = "flex"; }
 
 
 const INT = {d7: "Wöchentlich", d14: "Alle 2 Wochen", m1: "Monatlich", m3: "Vierteljährlich", m6: "Halbjährlich", m12: "Jährlich"};
-$("p_int").innerHTML = opts(INT);
-$("p_int").value = "m1";
-$("p_werk").innerHTML = opts({1:"Werk 1",2:"Werk 2",3:"Werk 3",4:"Werk 4",5:"Werk 5"});
-$("p_prio").innerHTML = opts(PR);
-$("p_prio").value = "normal";
-
 function addInt(date, code) {
   const d = new Date(date + "T12:00:00"), n = +code.slice(1);
   if (code[0] === "d") d.setDate(d.getDate() + n); else d.setMonth(d.getMonth() + n);
@@ -582,52 +523,7 @@ function newTicket(o) {
   t.history = [{t: now(), s: "offen"}];
   return t;
 }
-function runPlans() {
-  let made = 0;
-  db.plans.forEach(p => {
-    if (p.next > today()) return;
-    db.tickets.push(newTicket({title: p.title, werk: p.werk, prio: p.prio, status: "offen", from: "Wartungsplan", plan: p.id, due: p.next, desc: "Wiederkehrende Wartung (" + INT[p.int] + ")"}));
-    made++;
-    for (let g = 0; p.next <= today() && g < 400; g++) p.next = addInt(p.next, p.int);
-  });
-  if (made) save();
-  return made;
-}
-function hiddenHtml() {
-  const lim = leadLimit();
-  const all = db.tickets.filter(hid).sort((a, b) => String(a.due || "").localeCompare(String(b.due || "")));
-  const row = t => `<div class="pi" style="cursor:default;display:block"><div><b style="padding:0;color:inherit">#${t.no} ${esc(t.title)}</b><br><small class="meta">Werk ${t.werk} · ${t.due && t.due < today() ? `<span class="late">überfällig seit ${fd(t.due)}</span>` : "fällig " + fd(t.due)}</small></div>
-    <div class="act" style="margin-top:6px"><select onchange="setStatus('${t.id}', this.value);renderPlan()" aria-label="Status ändern">${opts(ST).replace(`value="${t.status}"`, `value="${t.status}" selected`)}</select>
-    <button class="sec" onclick="fromPlan=true;$('plan').style.display='none';openSheet('${t.id}')">Öffnen</button></div></div>`;
-  const due = all.filter(t => !t.due || t.due <= lim), later = all.filter(t => t.due && t.due > lim);
-  return `<h3>Fällige Wartungen (${due.length})</h3>` + (due.map(row).join("") || `<p class="meta">Aktuell ist nichts fällig.</p>`) +
-    (later.length ? `<h3>Vorgemerkt – noch nicht fällig (${later.length})</h3>` + later.map(row).join("") : "");
-}
-function renderPlan() {
-  $("planList").innerHTML = (db.plans.map((p, i) =>
-    `<div class="pi" style="cursor:default"><span><b style="padding:0;color:inherit">${esc(p.title)}</b><br><small class="meta">Werk ${p.werk} · ${INT[p.int]} · nächste: ${fd(p.next)}</small></span><b onclick="delPlan(${i})">✕</b></div>`).join("")
-    || `<p class="meta">Noch keine wiederkehrenden Aufgaben.</p>`) + hiddenHtml();
-}
 function openSys() { $("sys").style.display = "block"; $("sys").scrollTop = 0; }
-let fromPlan = false;
-function openPlan() { renderPlan(); $("plan").style.display = "block"; $("plan").scrollTop = 0; }
-function addPlan() {
-  const title = $("p_title").value.trim();
-  if (!title) { alert("Bitte einen Titel eingeben."); return; }
-  const snapshot = JSON.stringify(db);
-  db.plans.push({id: uid(), title: title, werk: $("p_werk").value, prio: $("p_prio").value, int: $("p_int").value, next: $("p_next").value || today()});
-  runPlans();
-  if (!save()) { db = JSON.parse(snapshot); return; }
-  $("p_title").value = ""; $("p_next").value = "";
-  renderPlan(); render();
-}
-function delPlan(i) {
-  if (!confirm("Wiederkehrende Aufgabe löschen? Bereits erzeugte Tickets bleiben erhalten.")) return;
-  db.plans.splice(i, 1); save(); renderPlan();
-}
-
-/* ---------- Besprechungsräume ---------- */
-
 function renderRooms() {
   const q = $("r_q").value.trim().toLowerCase();
   const list = db.rooms.slice().sort((a, b) => a.t.localeCompare(b.t, "de")).filter(r => !q || r.t.toLowerCase().includes(q));
@@ -655,93 +551,116 @@ function delRoom(id) {
   save(); renderRooms();
 }
 
-/* ---------- Schulungstermine ---------- */
+/* ---------- Unterhaltsreinigung ---------- */
+const RK_ST = {offen:"Offen", klaerung:"In Klärung", erledigt:"Erledigt"};
+const KONT = [["f","Firma"],["n","Ansprechpartner"],["t","Telefon"],["m","E-Mail"]];
+const BEST = [["hp","Handpapier"],["bt","Blaue Tüten"],["wt","Weiße Tüten"],["tp","Toilettenpapier"],["mo","Mopps"],["rs","Reinigungsmittel Sanitär"],["rb","Reinigungsmittel Boden"],["rg","Reinigungsmittel Glas"]];
+const WERKE = {1:"Werk 1",2:"Werk 2",3:"Werk 3",4:"Werk 4",5:"Werk 5"};
+let RS = {re: null, rk: null, focus: null}, rkPh = [];
+const rObj = () => db.reinig.find(x => x.id === "reinig");
+const rkOpen = x => x.st !== "erledigt";
+const rkSort = (a, b) => String(b.d || "").localeCompare(String(a.d || ""));
+const rkTitle = x => { const t = String(x.t || "").split("\n")[0]; return t.length > 60 ? t.slice(0, 60) + "…" : t; };
 
-const schTs = x => new Date(x.d + "T" + (x.tm || "09:00")).getTime();
-const fmtD = d => d.split("-").reverse().join(".");
-function renderSchul() {
-  const now = Date.now();
-  const row = x => {
-    const past = schTs(x) < now;
-    return `<div class="pi" style="cursor:default;${past ? "opacity:.6" : ""}"><span><b style="padding:0;color:inherit">${past ? "✅ " : ""}${esc(x.t)}</b><br><small class="meta">${fmtD(x.d)}${x.tm ? ", " + esc(x.tm) + " Uhr" : ""}${x.o ? " · " + esc(x.o) : ""}${x.a ? " · Ausbilder: " + esc(x.a) : ""}</small></span>
-      <span style="white-space:nowrap"><b onclick="icsSchul('${x.id}')" aria-label="Kalender">📅</b> <b onclick="editSchul('${x.id}')" aria-label="Bearbeiten">✏️</b> <b onclick="delSchul('${x.id}')" aria-label="Löschen">✕</b></span></div>`;
-  };
-  const up = db.schul.filter(x => schTs(x) >= now).sort((a, b) => schTs(a) - schTs(b));
-  const old = db.schul.filter(x => schTs(x) < now).sort((a, b) => schTs(b) - schTs(a));
-  $("schList").innerHTML =
-    "<h3 style='margin:4px 0'>Kommende (" + up.length + ")</h3>" + (up.map(row).join("") || `<p class="meta">Keine kommenden Schulungen.</p>`) +
-    (old.length ? "<h3 style='margin:14px 0 4px'>Archiv – durchgeführt (" + old.length + ")</h3>" + old.map(row).join("") : "");
-  $("schBtn").textContent = "🎓 Schulungstermine" + (up.length ? " (" + up.length + ")" : "");
+/* Meldung auf der Startseite */
+function renderReNote() {
+  const ro = db.reklam.filter(rkOpen).sort(rkSort);
+  $("reBtn").textContent = "🧽 Unterhaltsreinigung" + (ro.length ? " (" + ro.length + " offen)" : "");
+  $("rkNote").innerHTML = ro.length
+    ? `<div class="card" style="border-left-color:#d64545"><div class="title" style="font-size:16px">🧽 Offene Reklamationen (${ro.length})</div>${ro.map(x => `<div class="pi" onclick="openReinig('${x.id}')"><span><b style="padding:0;color:inherit">Werk ${esc(x.w)} – ${esc(rkTitle(x))}</b><br><small class="meta">${fd(x.d)}${x.von ? " · von " + esc(x.von) : ""} · ${RK_ST[x.st] || "Offen"}</small></span></div>`).join("")}</div>`
+    : `<div class="meta" style="margin:0 0 10px">🧽 Reklamationen Unterhaltsreinigung: <b style="color:#2e9e5b">keine offen ✅</b></div>`;
 }
-function clearSchulForm() { $("s_id").value = ""; $("s_t").value = ""; $("s_o").value = ""; $("s_d").value = ""; $("s_tm").value = "09:00"; $("s_a").value = ""; $("schT").textContent = "Neue Schulung"; }
-function openSchul() { clearSchulForm(); renderSchul(); $("schul").style.display = "block"; $("schul").scrollTop = 0; }
-function editSchul(id) {
-  const x = db.schul.find(y => y.id === id); if (!x) return;
-  $("s_id").value = x.id; $("s_t").value = x.t; $("s_o").value = x.o || ""; $("s_d").value = x.d; $("s_tm").value = x.tm || ""; $("s_a").value = x.a || "";
-  $("schT").textContent = "Schulung bearbeiten"; $("s_t").focus(); $("schul").scrollTop = $("schul").scrollHeight;
+function openReinig(focusId) { RS = {re: null, rk: null, focus: focusId || null}; rkPh = []; renderReinig(); $("reinig").style.display = "block"; $("reinig").scrollTop = 0; }
+function closeReinig() { RS.re = null; RS.rk = null; rkPh = []; $("reinig").style.display = "none"; renderReNote(); }
+function reEdit(w) { RS.rk = null; RS.re = w; renderReinig(); }
+function reCancel() { RS.re = null; RS.rk = null; rkPh = []; renderReinig(); }
+function reSave(w) {
+  const old = rObj(), r = old ? JSON.parse(JSON.stringify(old)) : {id: "reinig", k: {}, b: {}, bs: ""};
+  if (w === "k") { r.k = {}; KONT.forEach(([c]) => r.k[c] = $("u_" + c).value.trim()); r.k.o = $("u_o").value.trim(); }
+  else { r.b = {}; BEST.forEach(([c]) => r.b[c] = $("u_" + c).value.trim()); r.b.so = $("u_so").value.trim(); r.bs = today(); }
+  const snap = JSON.stringify(db);
+  if (old) db.reinig[db.reinig.indexOf(old)] = r; else db.reinig.push(r);
+  if (!save()) { db = JSON.parse(snap); return; }
+  RS.re = null; renderReinig(); renderReNote();
 }
-function saveSchul() {
-  const t = $("s_t").value.trim(), d = $("s_d").value;
-  if (!t) { alert("Bitte eintragen, was geschult wird."); $("s_t").focus(); return; }
-  if (!d) { alert("Bitte ein Datum wählen."); return; }
-  const snapshot = JSON.stringify(db), id = $("s_id").value;
-  const v = {id: id || uid(), t: t, o: $("s_o").value.trim(), d: d, tm: $("s_tm").value || "", a: $("s_a").value.trim()};
-  const i = db.schul.findIndex(y => y.id === id);
-  if (i >= 0) db.schul[i] = v; else db.schul.push(v);
-  if (!save()) { db = JSON.parse(snapshot); return; }
-  try { const f = JSON.parse(localStorage.getItem("schFired") || "{}"); delete f[v.id]; localStorage.setItem("schFired", JSON.stringify(f)); } catch (e) {}
-  clearSchulForm(); renderSchul();
-  askNotif();
+function rkEdit(id) { const x = db.reklam.find(y => y.id === id); if (!x) return; rkPh = (x.photos || []).slice(); RS.re = null; RS.rk = id; renderReinig(); }
+function rkNew() { rkPh = []; RS.re = null; RS.rk = "new"; renderReinig(); const f = $("rk_t"); if (f) f.focus(); }
+function rkSave() {
+  const t = $("rk_t").value.trim();
+  if (!t) { alert("Bitte eintragen, worum es geht."); $("rk_t").focus(); return; }
+  const old = db.reklam.find(y => y.id === RS.rk), x = old ? JSON.parse(JSON.stringify(old)) : {id: uid()};
+  x.w = $("rk_w").value; x.d = $("rk_d").value || today(); x.von = $("rk_v").value.trim(); x.st = $("rk_s").value; x.t = t; x.ma = $("rk_m").value.trim(); x.photos = rkPh.slice();
+  if (x.st === "erledigt") x.ed = x.ed || today(); else delete x.ed;
+  const snap = JSON.stringify(db);
+  if (old) db.reklam[db.reklam.indexOf(old)] = x; else db.reklam.push(x);
+  if (!save()) { db = JSON.parse(snap); return; }
+  rkPh = []; RS.rk = null; renderReinig(); renderReNote();
 }
-function delSchul(id) {
-  const x = db.schul.find(y => y.id === id);
-  if (!x || !confirm("Schulung „" + x.t + "“ löschen?")) return;
-  db.schul = db.schul.filter(y => y.id !== id);
-  save(); renderSchul();
+function rkSet(id, st) {
+  const x = db.reklam.find(y => y.id === id); if (!x) return;
+  x.st = st; if (st === "erledigt") x.ed = today(); else delete x.ed;
+  save(); renderReinig(); renderReNote();
 }
-function icsSchul(id) {
-  const x = db.schul.find(y => y.id === id); if (!x) return;
-  const p = n => String(n).padStart(2, "0"), st = new Date(schTs(x)), en = new Date(schTs(x) + 3600000);
-  const f = d => d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "T" + p(d.getHours()) + p(d.getMinutes()) + "00";
-  const e = v => String(v).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
-  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Peter//Ticketsystem//DE", "BEGIN:VEVENT", "UID:" + x.id + "@ticketsystem", "DTSTAMP:" + f(new Date()),
-    "DTSTART:" + f(st), "DTEND:" + f(en), "SUMMARY:" + e("Schulung: " + x.t), "LOCATION:" + e(x.o || ""), "DESCRIPTION:" + e(x.a ? "Ausbilder: " + x.a : ""),
-    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + e("Schulung: " + x.t), "TRIGGER:-PT1H", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([ics], {type: "text/calendar"}));
-  a.download = "Schulung-" + x.d + ".ics";
-  document.body.appendChild(a); a.click(); a.remove();
+function rkDel(id) {
+  const x = db.reklam.find(y => y.id === id);
+  if (!x || !confirm("Diese Reklamation wirklich löschen?")) return;
+  db.reklam = db.reklam.filter(y => y.id !== id); save(); renderReinig(); renderReNote();
 }
-function askNotif() { try { if ("Notification" in window && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} }
-function checkSchul() {
-  const now = Date.now();
-  let fired = {};
-  try { fired = JSON.parse(localStorage.getItem("schFired") || "{}"); } catch (e) {}
-  let ch = false;
-  db.schul.forEach(x => {
-    const ts = schTs(x), diff = ts - now;
-    if (fired[x.id] || diff > 3600000 || diff < -1800000) return;
-    fired[x.id] = 1; ch = true;
-    const msg = "In " + Math.max(0, Math.round(diff / 60000)) + " Min: " + x.t + (x.o ? " – " + x.o : "") + (x.a ? " (" + x.a + ")" : "");
-    let shown = false;
-    try {
-      if ("Notification" in window && Notification.permission === "granted") {
-        if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r => r.showNotification("🎓 Schulung", {body: msg, tag: x.id})).catch(() => new Notification("🎓 Schulung", {body: msg}));
-        else new Notification("🎓 Schulung", {body: msg});
-        shown = true;
-      }
-    } catch (e) {}
-    if (!shown || document.visibilityState === "visible") setTimeout(() => alert("🎓 Schulung\n" + msg), 50);
-  });
-  if (ch) try { localStorage.setItem("schFired", JSON.stringify(fired)); } catch (e) {}
+async function addRkPhotos(e) {
+  for (const f of e.target.files) {
+    if (rkPh.length >= 3) { alert("Maximal 3 Fotos pro Reklamation."); break; }
+    try { rkPh.push(await shrink(f, 800, 0.62)); } catch (x) { alert("Ein Foto konnte nicht verarbeitet werden."); }
+  }
+  e.target.value = ""; rkRedrawPh();
 }
-setInterval(checkSchul, 30000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkSchul(); });
-setTimeout(() => { checkSchul(); renderSchul(); }, 1500);
+function rkRedrawPh() { const el = $("rkPhList"); if (el) el.innerHTML = rkPh.map((p, i) => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt="Foto"><b onclick="rkPh.splice(${i},1);rkRedrawPh()">✕</b></span>`).join(""); }
+function rkForm(x) {
+  const v = x || {w: "1", d: today(), st: "offen"};
+  return `<div class="card" style="border-left-color:var(--pr)"><div class="title">${x ? "Reklamation bearbeiten" : "Neue Reklamation"}</div>
+    <div class="two"><div><label for="rk_w">Werk</label><select id="rk_w">${opts(WERKE).replace(`value="${v.w}"`, `value="${v.w}" selected`)}</select></div>
+    <div><label for="rk_d">Datum</label><input id="rk_d" type="date" value="${esc(v.d)}"></div></div>
+    <label for="rk_v">Wer meldet?</label><input id="rk_v" value="${esc(v.von || "")}" placeholder="Name / Abteilung">
+    <label for="rk_s">Status</label><select id="rk_s">${opts(RK_ST).replace(`value="${v.st}"`, `value="${v.st}" selected`)}</select>
+    <label for="rk_t">Worum geht es? *</label><textarea id="rk_t" rows="4">${esc(v.t || "")}</textarea>
+    <label for="rk_m">Maßnahme / Antwort der Reinigungsfirma</label><textarea id="rk_m" rows="3">${esc(v.ma || "")}</textarea>
+    <label>Fotos (max. 3)</label><div class="thumbs" id="rkPhList">${rkPh.map((p, i) => `<span class="th"><img src="${p}" onclick="showImg(this.src)" alt="Foto"><b onclick="rkPh.splice(${i},1);rkRedrawPh()">✕</b></span>`).join("")}</div>
+    <button class="sec" type="button" onclick="$('rkphfile').click()">📷 Foto hinzufügen</button>
+    <div class="foot"><button onclick="rkSave()">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div></div>`;
+}
+function rkCard(x) {
+  const op = rkOpen(x);
+  return `<div class="card" id="rk_${x.id}" style="${op ? "border-left-color:#d64545" : "opacity:.8"}">
+    <div class="meta" style="margin-top:0"><span class="badge s-${x.st === "klaerung" ? "bearbeitung" : x.st === "erledigt" ? "erledigt" : "offen"}">${RK_ST[x.st] || "Offen"}</span> <b>Werk ${esc(x.w)}</b> · ${fd(x.d)}${x.von ? " · gemeldet von " + esc(x.von) : ""}${x.ed ? " · erledigt am " + fd(x.ed) : ""}</div>
+    <div class="txt">${esc(x.t)}</div>
+    ${x.ma ? `<div class="meta" style="white-space:pre-wrap"><b>Maßnahme:</b> ${linkify(x.ma)}</div>` : ""}
+    ${(x.photos || []).map(p => `<img class="mini" src="${p}" onclick="showImg(this.src)" alt="Foto">`).join("")}
+    <div class="act"><button class="sec sm" onclick="rkEdit('${x.id}')">✏️ Bearbeiten</button>${op ? `<button class="sec sm" onclick="rkSet('${x.id}','erledigt')">✔ Erledigt</button>` : `<button class="sec sm" onclick="rkSet('${x.id}','offen')">↩ Öffnen</button>`}<button class="sec sm" onclick="rkDel('${x.id}')">🗑️</button></div></div>`;
+}
+function renderReinig() {
+  const r = rObj() || {}, k = r.k || {}, b = r.b || {};
+  const fm = (id, l, v, tx) => `<label for="u_${id}">${l}</label>` + (tx ? `<textarea id="u_${id}" rows="3">${esc(v || "")}</textarea>` : `<input id="u_${id}" value="${esc(v || "")}">`);
+  const kv = (l, v, raw) => `<div class="meta" style="margin:4px 0"><b>${l}:</b> ${v ? (raw ? v : esc(v)) : "–"}</div>`;
+  const open = db.reklam.filter(rkOpen).sort(rkSort), done = db.reklam.filter(x => !rkOpen(x)).sort(rkSort);
+  const head = (t, btn) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:8px 0">${t}</h3>${btn}</div>`;
+  let h = `<div class="card" style="border-left-color:var(--pr)">${head("👤 Kontakt", RS.re === "k" ? "" : `<button class="sec sm" onclick="reEdit('k')">✏️ Bearbeiten</button>`)}`;
+  if (RS.re === "k") h += KONT.map(([c, l]) => fm(c, l, k[c])).join("") + fm("o", "Vertrag, Reinigungszeiten, Notizen", k.o, 1) + `<div class="foot"><button onclick="reSave('k')">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div>`;
+  else h += Object.values(k).some(Boolean) ? kv("Firma", k.f) + kv("Ansprechpartner", k.n) + kv("Telefon", linkify(k.t || ""), 1) + kv("E-Mail", linkify(k.m || ""), 1) + (k.o ? `<div class="meta" style="white-space:pre-wrap">${linkify(k.o)}</div>` : "") : `<p class="meta">Noch kein Kontakt eingetragen.</p>`;
+  h += `</div>`;
+  h += `<div class="card" style="border-left-color:var(--pr)">${head("📦 Bestand Verbrauchsmaterial", RS.re === "b" ? "" : `<button class="sec sm" onclick="reEdit('b')">✏️ Ändern</button>`)}${r.bs ? `<div class="meta" style="margin-top:0">Stand ${fd(r.bs)}</div>` : ""}`;
+  if (RS.re === "b") h += BEST.map(([c, l]) => fm(c, l, b[c])).join("") + fm("so", "Sonstiges (freie Eingabe)", b.so, 1) + `<div class="foot"><button onclick="reSave('b')">💾 Speichern</button><button class="sec" onclick="reCancel()">Abbrechen</button></div>`;
+  else h += BEST.map(([c, l]) => kv(l, b[c])).join("") + (b.so ? kv("Sonstiges", b.so) : "");
+  h += `</div>`;
+  h += `<div class="card" style="border-left-color:#d64545">${head(`⚠️ Reklamationen (${open.length} offen)`, RS.rk ? "" : `<button class="sm" onclick="rkNew()">＋ Neu</button>`)}`;
+  if (RS.rk === "new") h += rkForm(null);
+  h += open.map(x => RS.rk === x.id ? rkForm(x) : rkCard(x)).join("") || (RS.rk === "new" ? "" : `<p class="meta">Keine offenen Reklamationen ✅</p>`);
+  if (done.length) h += `<details${done.some(x => x.id === RS.focus || x.id === RS.rk) ? " open" : ""} style="margin-top:10px"><summary class="meta">Erledigte Reklamationen (${done.length})</summary>${done.map(x => RS.rk === x.id ? rkForm(x) : rkCard(x)).join("")}</details>`;
+  h += `</div>`;
+  $("reBody").innerHTML = h;
+  if (RS.focus) { const el = $("rk_" + RS.focus); RS.focus = null; if (el) { el.scrollIntoView({block: "center"}); el.style.outline = "2px solid var(--pr)"; } }
+}
 
-/* ---------- Entsorger ---------- */
 
-const ENT_F = ["f", "m", "r", "w", "k", "n"];
+
 /* E-Mail-Adressen -> mailto, Telefonnummern -> tel (Text wird vorher escaped) */
 function linkify(v) {
   return esc(v)
@@ -751,40 +670,6 @@ function linkify(v) {
       return d.replace(/\D/g, "").length >= 6 ? `${pre}<a href="tel:${d}">${num}</a>` : all;
     });
 }
-function renderEnt() {
-  const q = $("e_q").value.trim().toLowerCase();
-  const list = db.ent.slice().sort((a, b) => a.f.localeCompare(b.f, "de")).filter(x => !q || ENT_F.some(k => String(x[k] || "").toLowerCase().includes(q)));
-  const line = (ic, v, lk) => v ? `<div class="meta" style="white-space:pre-wrap">${ic} ${lk ? linkify(v) : esc(v)}</div>` : "";
-  $("entList").innerHTML = list.map(x =>
-    `<div class="card" style="margin-top:8px"><div class="top"><div class="title">${esc(x.f)}</div><span style="white-space:nowrap"><b onclick="editEnt('${x.id}')" aria-label="Bearbeiten">✏️</b> <b onclick="delEnt('${x.id}')" aria-label="Löschen">✕</b></span></div>
-      ${line("🗑️", x.m)}${line("🔄", x.r)}${line("📍", x.w)}${line("📞", x.k, 1)}${line("📝", x.n, 1)}</div>`).join("")
-    || `<p class="meta">${db.ent.length ? "Nichts gefunden." : "Noch keine Entsorger eingetragen."}</p>`;
-  $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
-}
-function clearEntForm() { ["e_id", "e_f", "e_m", "e_r", "e_w", "e_k", "e_n"].forEach(i => $(i).value = ""); $("entT").textContent = "Neuer Entsorger"; }
-function openEnt() { $("e_q").value = ""; clearEntForm(); renderEnt(); $("ent").style.display = "block"; $("ent").scrollTop = 0; }
-function editEnt(id) {
-  const x = db.ent.find(y => y.id === id); if (!x) return;
-  $("e_id").value = x.id; $("e_f").value = x.f; $("e_m").value = x.m || ""; $("e_r").value = x.r || ""; $("e_w").value = x.w || ""; $("e_k").value = x.k || ""; $("e_n").value = x.n || "";
-  $("entT").textContent = "Entsorger bearbeiten"; $("ent").scrollTop = $("ent").scrollHeight; $("e_f").focus();
-}
-function saveEnt() {
-  const f = $("e_f").value.trim();
-  if (!f) { alert("Bitte die Firma eintragen."); $("e_f").focus(); return; }
-  const snapshot = JSON.stringify(db), id = $("e_id").value;
-  const v = {id: id || uid(), f: f, m: $("e_m").value.trim(), r: $("e_r").value.trim(), w: $("e_w").value.trim(), k: $("e_k").value.trim(), n: $("e_n").value.trim()};
-  const i = db.ent.findIndex(y => y.id === id);
-  if (i >= 0) db.ent[i] = v; else db.ent.push(v);
-  if (!save()) { db = JSON.parse(snapshot); return; }
-  clearEntForm(); $("e_q").value = ""; renderEnt();
-}
-function delEnt(id) {
-  const x = db.ent.find(y => y.id === id);
-  if (!x || !confirm("Entsorger „" + x.f + "“ löschen?")) return;
-  db.ent = db.ent.filter(y => y.id !== id);
-  save(); renderEnt();
-}
-
 /* ---------- Backup / Import ---------- */
 
 function saveBlob(blob, name) {
@@ -843,7 +728,7 @@ async function importFile(e) {
   if (!file) return;
   try {
     const text = new TextDecoder("utf-8").decode(new Uint8Array(await file.arrayBuffer()));
-    let inc = [], pin = [], rin = [], sin = [], ein = [];
+    let inc = [], pin = [], rin = [], sin = [], ein = [], uin = [], xin = [];
     if (/\.json$/i.test(file.name)) {
       const d = JSON.parse(text);
       inc = Array.isArray(d) ? d : d.tickets;
@@ -851,6 +736,8 @@ async function importFile(e) {
       rin = Array.isArray(d.rooms) ? d.rooms : [];
       sin = Array.isArray(d.schul) ? d.schul : [];
       ein = Array.isArray(d.ent) ? d.ent : [];
+      uin = Array.isArray(d.reinig) ? d.reinig : [];
+      xin = Array.isArray(d.reklam) ? d.reklam : [];
       if (!Array.isArray(inc)) throw new Error("Ungültige Backup-Datei");
     } else {
       const rows = parseCSV(text, (text.split(/\r?\n/)[0].match(/;/g) || []).length >= (text.split(/\r?\n/)[0].match(/,/g) || []).length ? ";" : ",");
@@ -880,6 +767,8 @@ async function importFile(e) {
     rin.forEach(r => { if (r && r.id && r.t && !db.rooms.some(x => x.id === r.id || x.t.toLowerCase() === String(r.t).toLowerCase())) db.rooms.push({id: r.id, t: String(r.t)}); });
     sin.forEach(r => { if (r && r.id && r.t && r.d && !db.schul.some(x => x.id === r.id)) db.schul.push({id: r.id, t: String(r.t), o: r.o || "", d: String(r.d), tm: r.tm || "", a: r.a || ""}); });
     ein.forEach(r => { if (r && r.id && r.f && !db.ent.some(x => x.id === r.id)) db.ent.push({id: r.id, f: String(r.f), m: r.m || "", r: r.r || "", w: r.w || "", k: r.k || "", n: r.n || ""}); });
+    uin.forEach(r => { if (r && r.id === "reinig" && !db.reinig.some(x => x.id === r.id)) db.reinig.push(r); });
+    xin.forEach(r => { if (r && r.id && r.t && !db.reklam.some(x => x.id === r.id)) db.reklam.push(r); });
     pin.forEach(p => { if (p && p.title && p.next && INT[p.int] && !db.plans.some(x => x.id === p.id)) db.plans.push(p); });
     if (!save()) { db = JSON.parse(snapshot); return; }
     render();
@@ -923,12 +812,12 @@ function rmSelf() {
 /* ---------- Sync (Firebase, Änderungen werden pro Ticket abgeglichen) ---------- */
 
 const SC = "petersSyncCfg", SM = "petersSyncMeta", SMAIL = "petersSyncMail";
-let cfg = null, meta = {}, fdb = null, col = null, unsub = null;
+let cfg = null, meta = {}, fdb = null, col = null, hcol = null, unsub = null, unsub2 = null;
 try { cfg = JSON.parse(localStorage.getItem(SC) || "null"); } catch (e) {}
 try { meta = JSON.parse(localStorage.getItem(SM) || "{}"); } catch (e) {}
 const saveMeta = () => { try { localStorage.setItem(SM, JSON.stringify(meta)); } catch (e) {} };
 const hs = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h; };
-const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]), db.ent.map(x => ["e", x]));
+const syncItems = () => db.tickets.map(x => ["t", x]).concat(db.plans.map(x => ["p", x]), db.rooms.map(x => ["r", x]), db.schul.map(x => ["s", x]), db.ent.map(x => ["e", x]), db.reinig.map(x => ["u", x]), db.reklam.map(x => ["x", x]));
 
 function setState(txt) {
   $("syncBtn").textContent = "☁️ Sync: " + txt;
@@ -961,7 +850,9 @@ function pushPending() {
       if (!f) return;
       d = JSON.stringify(f[1]);
     }
-    col.doc(id).set({k: m.k, d: d, upd: m.u, del: !!m.del})
+    const target = (m.k === "u" || m.k === "x") ? hcol : col;
+    if (!target) return;
+    target.doc(id).set({k: m.k, d: d, upd: m.u, del: !!m.del})
       .then(() => { if (meta[id] && meta[id].u === m.u) { meta[id].p = 0; saveMeta(); } setState("synchronisiert"); })
       .catch(e => setState("Fehler: " + (e.code || e.message)));
   });
@@ -976,12 +867,14 @@ function applyRemote(id, r) {
     db.rooms = db.rooms.filter(x => x.id !== id);
     db.schul = db.schul.filter(x => x.id !== id);
     db.ent = db.ent.filter(x => x.id !== id);
+    db.reinig = db.reinig.filter(x => x.id !== id);
+    db.reklam = db.reklam.filter(x => x.id !== id);
     meta[id] = {h: 0, u: r.upd, p: 0, k: r.k, del: true};
     return true;
   }
   let x;
   try { x = JSON.parse(r.d); } catch (e) { return false; }
-  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : r.k === "e" ? db.ent : db.tickets, i = list.findIndex(y => y.id === id);
+  const list = r.k === "p" ? db.plans : r.k === "r" ? db.rooms : r.k === "s" ? db.schul : r.k === "e" ? db.ent : r.k === "u" ? db.reinig : r.k === "x" ? db.reklam : db.tickets, i = list.findIndex(y => y.id === id);
   if (r.k === "t") {
     if (!Array.isArray(x.pl)) x.pl = [];
     if (!Array.isArray(x.photos)) x.photos = [];
@@ -992,23 +885,29 @@ function applyRemote(id, r) {
   return true;
 }
 
+function afterRemote() {
+  saveMeta();
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
+  render();
+  if ($("rooms").style.display === "block") renderRooms();
+  if ($("reinig").style.display === "block" && !RS.re && !RS.rk) renderReinig();
+}
 function startListen(user) {
-  col = fdb.collection("users").doc(user.uid).collection("items");
+  const u = fdb.collection("users").doc(user.uid);
+  col = u.collection("items");
+  hcol = u.collection("handbuch");          // Unterhaltsreinigung liegt im selben Ordner wie das Facility Cockpit
   syncLocal();
   unsub = col.onSnapshot(snap => {
     let changed = false;
     snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
-    if (changed) {
-      saveMeta();
-      try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {}
-      render();
-      if ($("plan").style.display === "block") renderPlan();
-      if ($("rooms").style.display === "block") renderRooms();
-      renderSchul();
-      if ($("ent").style.display === "block") renderEnt(); else $("entBtn").textContent = "♻️ Entsorger (" + db.ent.length + ")";
-    }
+    if (changed) afterRemote();
     setState(snap.metadata.fromCache ? "offline (lokal)" : "synchronisiert");
   }, e => setState("Fehler: " + (e.code || e.message)));
+  unsub2 = hcol.where("k", "in", ["u", "x"]).onSnapshot(snap => {
+    let changed = false;
+    snap.docChanges().forEach(c => { if (c.type !== "removed" && applyRemote(c.doc.id, c.doc.data())) changed = true; });
+    if (changed) afterRemote();
+  }, e => setState("Fehler Reinigung: " + (e.code || e.message)));
 }
 
 const loadScript = src => new Promise((ok, no) => {
@@ -1028,7 +927,8 @@ async function initSync() {
     fdb = firebase.firestore();
     firebase.auth().onAuthStateChanged(u => {
       if (unsub) { unsub(); unsub = null; }
-      if (u) startListen(u); else { col = null; setState("nicht angemeldet"); }
+      if (unsub2) { unsub2(); unsub2 = null; }
+      if (u) startListen(u); else { col = null; hcol = null; setState("nicht angemeldet"); }
     });
   } catch (e) { setState("offline (lokal)"); }
 }
@@ -1066,15 +966,14 @@ async function connectSync() {
 
 function disconnectSync() {
   if (!confirm("Synchronisierung ausschalten? Die Tickets auf diesem Gerät bleiben erhalten.")) return;
-  try { if (unsub) unsub(); if (window.firebase && firebase.apps.length) firebase.auth().signOut(); } catch (e) {}
+  try { if (unsub) unsub(); if (unsub2) unsub2(); if (window.firebase && firebase.apps.length) firebase.auth().signOut(); } catch (e) {}
   localStorage.removeItem(SC); localStorage.removeItem(SM);
-  cfg = null; meta = {}; col = null; unsub = null;
+  cfg = null; meta = {}; col = null; hcol = null; unsub = null; unsub2 = null;
   setState("aus");
   location.reload();
 }
 
 ["fStatus","fWerk","fPrio"].forEach(id => $(id).addEventListener("input", render));
-runPlans();
 render();
 initSync();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw-tickets.js").catch(() => {});
